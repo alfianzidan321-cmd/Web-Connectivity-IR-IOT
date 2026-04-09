@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT-SIG Smart Control</title>
+    
+    <!-- Import Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Import Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Import Paho MQTT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+    <!-- Import Chart.js untuk Grafik Suhu -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        bgBase: '#09090b',
+                        surface: '#18181b',
+                        surfaceAlt: '#27272a',
+                        borderCol: '#3f3f46',
+                        accent: '#38bdf8',
+                        accentDark: '#0284c7',
+                        danger: '#f87171',
+                        success: '#34d399',
+                        lcdBg: '#121f26',
+                        lcdText: '#67e8f9'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        .btn-press { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-press:active:not(:disabled) { transform: scale(0.92); }
+        .btn-press:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        @keyframes slideUp {
+            from { bottom: -50px; opacity: 0; transform: translate(-50%, 10px); }
+            to { bottom: 24px; opacity: 1; transform: translate(-50%, 0); }
+        }
+        .toast-show { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Inner shadow for LCD */
+        .lcd-screen { box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 selection:bg-accent selection:text-bgBase">
+
+    <!-- Container Dashboard Minimalis -->
+    <div class="w-full max-w-sm bg-surface rounded-[2rem] border border-borderCol/40 shadow-2xl overflow-hidden pb-6">
+        
+        <!-- Header -->
+        <div class="px-6 py-5 flex justify-between items-center border-b border-borderCol/20">
+            <div class="flex flex-col justify-center">
+                <span class="text-[9px] font-bold tracking-[0.2em] text-accent uppercase mb-1.5">Smart Control</span>
+                <h1 class="text-xl font-medium tracking-tight text-white leading-none">Ruang Utama</h1>
+            </div>
+            <!-- Indikator Koneksi MQTT -->
+            <div id="connStatus" class="flex items-center text-[10px] tracking-wider font-semibold bg-surfaceAlt text-zinc-400 px-3 py-1.5 rounded-full border border-borderCol/30 transition-colors duration-300">
+                <span id="connDot" class="w-1.5 h-1.5 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>
+                <span id="connText">KONEK...</span>
+            </div>
+        </div>
+
+        <!-- 1. WIDGET SUHU & GRAFIK -->
+        <div class="px-6 pt-5 pb-3 border-b border-borderCol/20 bg-gradient-to-b from-surfaceAlt/10 to-transparent">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Suhu Saat Ini</span>
+                <span id="lastUpdated" class="text-[9px] text-zinc-600 font-mono tracking-wider">Diperbarui: --:--:--</span>
+            </div>
+            <div class="flex items-start mb-3">
+                <span id="suhuValue" class="text-5xl font-light text-zinc-400 tracking-tighter transition-colors duration-500">--</span>
+                <span id="suhuSatuan" class="text-lg text-zinc-600 font-light mt-1.5 ml-1 transition-colors duration-500">°C</span>
+            </div>
+            <!-- Container Grafik -->
+            <div class="w-full h-16 opacity-90">
+                <canvas id="tempChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 2. DIREKTORI AC -->
+        <div class="px-6 mt-5 space-y-3">
+            <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase mb-1 block">Profil Perangkat</span>
+            <div class="flex space-x-3">
+                <div class="relative w-1/2">
+                    <select id="acBrand" onchange="updateModelList()" class="ac-control w-full bg-bgBase border border-borderCol/50 text-white rounded-xl px-4 py-3 text-sm font-medium focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <!-- Opsi JavaScript -->
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-500">
+                        <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                    </div>
+                </div>
+                <div class="relative w-1/2">
+                    <select id="acModel" onchange="resetRemoteUI()" class="ac-control w-full bg-bgBase border border-borderCol/50 text-zinc-300 rounded-xl px-4 py-3 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <!-- Opsi JavaScript -->
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-500">
+                        <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 3. AREA KONTROL DINAMIS ================= -->
+        
+        <!-- Placeholder Saat Belum Konek -->
+        <div id="controlPlaceholder" class="px-6 mt-6 mb-2 py-10 mx-6 flex flex-col items-center justify-center border border-borderCol/30 border-dashed rounded-2xl">
+            <span class="w-6 h-6 border-2 border-zinc-600 border-t-accent rounded-full animate-spin mb-3"></span>
+            <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Menunggu Sistem...</span>
+        </div>
+
+        <!-- Wrapper Panel Utama (Sembunyi by Default) -->
+        <div id="controlPanels" class="hidden">
+            
+            <!-- PANEL A: FULL REMOTE CONTROL (Digunakan untuk Standar & Kustom) -->
+            <div id="panelRemote" class="px-6 mt-6">
+                
+                <!-- Notifikasi Kustom Aktif (Hanya muncul jika profil Kustom dipilih) -->
+                <div id="customActiveBadge" class="hidden justify-center mb-3">
+                    <span class="bg-accent/10 border border-accent/20 text-accent text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
+                        Mode Kustom
+                    </span>
+                </div>
+
+                <!-- Layar Digital Remote -->
+                <div class="lcd-screen bg-lcdBg border border-borderCol/50 rounded-2xl p-4 mb-5 relative overflow-hidden">
+                    <div class="flex justify-between items-center text-[10px] text-lcdText/80 font-mono mb-1 tracking-widest font-medium">
+                        <span id="remoteModeDisplay">MODE COOL</span>
+                        <span id="remoteFanDisplay">FAN AUTO</span>
+                    </div>
+                    <div class="flex justify-center items-start pt-1 pb-2">
+                        <span id="remoteTempDisplay" class="text-6xl font-light text-lcdText">24</span>
+                        <span class="text-xl text-lcdText/70 ml-1 mt-1">°C</span>
+                    </div>
+                    <!-- Overlay saat AC Mati -->
+                    <div id="remoteOffOverlay" class="absolute inset-0 bg-lcdBg flex items-center justify-center hidden">
+                        <span class="text-zinc-700 text-sm tracking-widest font-mono font-medium">PERANGKAT MATI</span>
+                    </div>
+                </div>
+
+                <!-- Tombol Navigasi Remote -->
+                <div class="grid grid-cols-3 gap-4 items-center justify-items-center relative">
+                    <!-- Suhu Turun -->
+                    <button onclick="ubahSuhu(-1)" class="ac-control btn-press w-12 h-12 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition disabled:opacity-50">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                    </button>
+                    
+                    <!-- Power Utama -->
+                    <button onclick="togglePower()" id="btnPower" class="ac-control btn-press w-16 h-16 bg-white hover:bg-zinc-200 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center transition disabled:shadow-none disabled:bg-zinc-600">
+                        <svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                    </button>
+
+                    <!-- Suhu Naik -->
+                    <button onclick="ubahSuhu(1)" class="ac-control btn-press w-12 h-12 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition disabled:opacity-50">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20" style="transform: rotate(180deg);"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                    </button>
+                </div>
+
+                <!-- Tombol Khusus Belajar / Scan (Hanya muncul di Profil Kustom) -->
+                <div id="customLearnBox" class="hidden mt-6 p-4 bg-surfaceAlt/30 border border-borderCol/50 rounded-xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-zinc-400 font-semibold tracking-widest uppercase">Perbarui Sinyal Remot</span>
+                    </div>
+                    <button onclick="kirimPerintah('BELAJAR', 'Arahkan remot asli ke sensor & tekan Power!')" class="ac-control btn-press w-full bg-accent/20 hover:bg-accent hover:text-bgBase border border-accent/30 text-accent p-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center disabled:opacity-50">
+                        <svg class="w-3.5 h-3.5 fill-current mr-2" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+                        SCAN REMOT ASLI
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- PANEL B: FORM TAMBAH KUSTOM BARU -->
+            <div id="panelAddCustom" class="px-6 mt-6 hidden flex-col gap-3">
+                <div class="bg-accent/10 border border-accent/20 p-4 rounded-xl mb-2">
+                    <p class="text-xs text-accent leading-relaxed">
+                        Sistem akan membuat ruang penyimpanan (database lokal) baru untuk remot ini.
+                    </p>
+                </div>
+                <div class="mb-1">
+                    <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Nama Profil Baru</span>
+                    <input type="text" id="customNameInput" placeholder="Contoh: AC Ruang Rapat" class="w-full bg-bgBase border border-borderCol/50 text-white rounded-xl px-4 py-3.5 mt-2 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none transition placeholder:text-zinc-600">
+                </div>
+                
+                <button onclick="simpanCustomBaru()" class="ac-control btn-press w-full bg-white hover:bg-zinc-200 text-bgBase p-4 rounded-xl font-semibold transition flex items-center justify-center mt-1 shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:shadow-none">
+                    <span class="tracking-wide">SIMPAN PROFIL & MULAI SCAN</span>
+                </button>
+            </div>
+
+        </div>
+        
+        <!-- =========================================================== -->
+
+        <!-- 4. PENGATURAN BAWAH -->
+        <div class="px-6 mt-8 pt-4 border-t border-borderCol/30 flex justify-between">
+            <button onclick="hapusDatabaseKustom()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-danger transition uppercase tracking-wider disabled:opacity-50">
+                Hapus Database Lokal
+            </button>
+            <button onclick="konfirmasiResetWifi()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-yellow-500 transition uppercase tracking-wider disabled:opacity-50">
+                Putus Wi-Fi
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Custom Toast Notification -->
+    <div id="toastBox" class="fixed -bottom-20 left-1/2 transform -translate-x-1/2 bg-surfaceAlt border border-borderCol shadow-2xl text-white px-5 py-3 rounded-2xl flex items-center z-50 transition-all duration-300 pointer-events-none">
+        <div id="toastIconBox" class="w-2.5 h-2.5 rounded-full bg-success mr-3"></div>
+        <span id="toastMsg" class="font-medium text-sm tracking-wide">Perintah terkirim!</span>
+    </div>
+
+    <script>
+        // ================= SISTEM GRAFIK SUHU (Chart.js) =================
+        let tempChart;
+        const maxChartPoints = 12; // Menyimpan 12 riwayat suhu terakhir
+        let chartData = [];
+        let chartLabels = [];
+
+        function initChart() {
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            
+            // Buat efek gradasi warna di bawah garis
+            let gradient = ctx.createLinearGradient(0, 0, 0, 80);
+            gradient.addColorStop(0, 'rgba(161, 161, 170, 0.3)'); // zinc-400 transparent
+            gradient.addColorStop(1, 'rgba(161, 161, 170, 0)');
+
+            tempChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData,
+                        borderColor: '#a1a1aa', // Default zinc-400
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0, // Sembunyikan titik agar bersih
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.4 // Membuat garis melengkung mulus
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { 
+                            enabled: true,
+                            backgroundColor: '#27272a',
+                            titleFont: { family: 'Inter', size: 10 },
+                            bodyFont: { family: 'Inter', size: 12, weight: 'bold' },
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) { return context.parsed.y + ' °C'; }
+                            }
+                        } 
+                    },
+                    scales: {
+                        x: { display: false }, // Sembunyikan garis grid
+                        y: { display: false, suggestedMin: 18, suggestedMax: 32 }
+                    },
+                    animation: { duration: 400 },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+
+        // ================= SISTEM DATABASE INDEXEDDB =================
+        const dbName = "SmartAcDB";
+        const storeName = "profiles";
+        let db;
+        let customProfiles = []; 
+        
+        function initDatabase() {
+            return new Promise((resolve, reject) => {
+                let request = indexedDB.open(dbName, 1);
+                request.onupgradeneeded = function(e) {
+                    let database = e.target.result;
+                    if (!database.objectStoreNames.contains(storeName)) {
+                        database.createObjectStore(storeName, { keyPath: "id" });
+                    }
+                };
+                request.onsuccess = function(e) { db = e.target.result; resolve(); };
+                request.onerror = function(e) { reject(); };
+            });
+        }
+
+        function loadProfilesFromDB() {
+            return new Promise((resolve) => {
+                let transaction = db.transaction([storeName], "readonly");
+                let store = transaction.objectStore(storeName);
+                let request = store.getAll();
+                request.onsuccess = function() {
+                    customProfiles = request.result;
+                    resolve();
+                };
+            });
+        }
+
+        function saveProfileToDB(profile) {
+            return new Promise((resolve) => {
+                let transaction = db.transaction([storeName], "readwrite");
+                let store = transaction.objectStore(storeName);
+                store.put(profile);
+                transaction.oncomplete = function() { resolve(); };
+            });
+        }
+
+        function clearDB() {
+            let transaction = db.transaction([storeName], "readwrite");
+            let store = transaction.objectStore(storeName);
+            store.clear();
+            transaction.oncomplete = async function() {
+                customProfiles = [];
+                kirimPerintah('RESET', 'Memori lokal dan alat telah dihapus!');
+                await initDirectory();
+            };
+        }
+
+        // ================= DATABASE DIREKTORI AC =================
+        function getDirektoriLengkap() {
+            return {
+                "KUSTOM TERSIMPAN": customProfiles,
+                "+ TAMBAH KUSTOM BARU": [], 
+                "MIDEA / COOLIX": [
+                    { id: "COOLIX", nama: "Coolix Standar" },
+                    { id: "MIDEA", nama: "Midea Baru" }
+                ],
+                "SAMSUNG": [
+                    { id: "SAMSUNG", nama: "Samsung Standar" },
+                    { id: "SAMSUNG_AC", nama: "Samsung Inverter" }
+                ],
+                "LG": [
+                    { id: "LG", nama: "LG Standar" }
+                ],
+                "DAIKIN": [
+                    { id: "DAIKIN", nama: "Daikin Umum" }
+                ],
+                "PANASONIC": [
+                    { id: "PANASONIC", nama: "Panasonic Umum" }
+                ]
+            };
+        }
+
+        // ================= VARIABEL STATE REMOTE =================
+        let targetSuhu = 24;
+        let isPowerOn = false;
+
+        async function initDirectory() {
+            await loadProfilesFromDB();
+            let brandSelect = document.getElementById("acBrand");
+            let prevBrand = brandSelect.value;
+            brandSelect.innerHTML = ""; 
+            
+            let direktori = getDirektoriLengkap();
+            for (let brand in direktori) {
+                let option = document.createElement("option");
+                option.value = brand;
+                option.text = brand;
+                brandSelect.add(option);
+            }
+
+            if(prevBrand && (direktori[prevBrand].length > 0 || prevBrand === "+ TAMBAH KUSTOM BARU")) {
+                brandSelect.value = prevBrand;
+            } else if (customProfiles.length > 0) {
+                brandSelect.value = "KUSTOM TERSIMPAN";
+            } else {
+                brandSelect.value = "SAMSUNG"; 
+            }
+
+            updateModelList(); 
+        }
+
+        function updateModelList() {
+            let brand = document.getElementById("acBrand").value;
+            let modelSelect = document.getElementById("acModel");
+            modelSelect.innerHTML = ""; 
+            
+            let direktori = getDirektoriLengkap();
+            if(direktori[brand] && direktori[brand].length > 0) {
+                modelSelect.disabled = false;
+                direktori[brand].forEach(model => {
+                    let option = document.createElement("option");
+                    option.value = model.id;
+                    option.text = model.nama;
+                    modelSelect.add(option);
+                });
+            } else {
+                let option = document.createElement("option");
+                option.text = "---";
+                modelSelect.add(option);
+                modelSelect.disabled = true;
+            }
+
+            togglePanelVisibility(brand);
+            resetRemoteUI();
+        }
+
+        function togglePanelVisibility(brand) {
+            const pRemote = document.getElementById("panelRemote");
+            const pAdd = document.getElementById("panelAddCustom");
+            const badgeCustom = document.getElementById("customActiveBadge");
+            const boxLearn = document.getElementById("customLearnBox");
+            
+            pRemote.classList.add('hidden');
+            pAdd.classList.add('hidden'); pAdd.classList.remove('flex');
+
+            if (brand === "+ TAMBAH KUSTOM BARU") {
+                pAdd.classList.remove('hidden');
+                pAdd.classList.add('flex');
+            } else {
+                pRemote.classList.remove('hidden');
+                if (brand === "KUSTOM TERSIMPAN") {
+                    badgeCustom.classList.remove('hidden');
+                    badgeCustom.classList.add('flex');
+                    boxLearn.classList.remove('hidden');
+                } else {
+                    badgeCustom.classList.add('hidden');
+                    badgeCustom.classList.remove('flex');
+                    boxLearn.classList.add('hidden');
+                }
+            }
+        }
+
+        // ================= FUNGSI KENDALI KUSTOM & DATABASE =================
+        async function simpanCustomBaru() {
+            let inputName = document.getElementById("customNameInput").value.trim();
+            if(!inputName) { showToast("Masukkan nama profil dulu!", "error"); return; }
+            
+            let newId = "CUSTOM_" + Date.now();
+            let newProfile = { id: newId, nama: inputName };
+            
+            await saveProfileToDB(newProfile);
+            kirimPerintah('BELAJAR', 'Arahkan remot asli & tekan tombol Power!');
+            
+            document.getElementById("customNameInput").value = "";
+            await initDirectory(); 
+            
+            document.getElementById("acBrand").value = "KUSTOM TERSIMPAN";
+            updateModelList();
+            document.getElementById("acModel").value = newId;
+        }
+
+        function hapusDatabaseKustom() {
+            if(confirm("Yakin ingin menghapus seluruh profil kustom dan memori alat?")) {
+                clearDB();
+            }
+        }
+
+        // ================= FUNGSI KENDALI REMOTE =================
+        function resetRemoteUI() {
+            targetSuhu = 24;
+            document.getElementById("remoteTempDisplay").innerText = targetSuhu;
+        }
+
+        function togglePower() {
+            isPowerOn = !isPowerOn;
+            let btnPower = document.getElementById("btnPower");
+            let overlay = document.getElementById("remoteOffOverlay");
+            let modelId = document.getElementById("acModel").value;
+            let brandId = document.getElementById("acBrand").value;
+            let commandSuffix = (brandId === "KUSTOM TERSIMPAN") ? "CUSTOM_ON" : modelId;
+
+            if (isPowerOn) {
+                btnPower.classList.add("bg-white");
+                btnPower.classList.remove("bg-danger", "border-transparent");
+                btnPower.innerHTML = '<svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+                overlay.classList.add("hidden");
+                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_ON" : ("AC_ON_" + commandSuffix), "Menyalakan AC");
+            } else {
+                btnPower.classList.remove("bg-white");
+                btnPower.classList.add("bg-danger", "border-transparent");
+                btnPower.innerHTML = '<svg class="w-6 h-6 stroke-white stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+                overlay.classList.remove("hidden");
+                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_OFF" : ("AC_OFF_" + commandSuffix), "Mematikan AC");
+            }
+        }
+
+        function ubahSuhu(delta) {
+            if (!isPowerOn) return; 
+            let suhuBaru = targetSuhu + delta;
+            
+            if (suhuBaru >= 16 && suhuBaru <= 30) {
+                targetSuhu = suhuBaru;
+                document.getElementById("remoteTempDisplay").innerText = targetSuhu;
+                
+                let modelId = document.getElementById("acModel").value;
+                let brandId = document.getElementById("acBrand").value;
+                let commandStr = (brandId === "KUSTOM TERSIMPAN") 
+                                 ? ("AC_SET_" + modelId + "_TEMP_" + targetSuhu) 
+                                 : ("AC_SET_" + modelId + "_TEMP_" + targetSuhu);
+                
+                kirimPerintah(commandStr, "Suhu " + targetSuhu + "°C");
+            }
+        }
+
+        // ================= KONTROL STATE UI (QOL) =================
+        function setUIState(isEnabled) {
+            let controls = document.querySelectorAll('.ac-control');
+            controls.forEach(ctrl => {
+                ctrl.disabled = !isEnabled;
+            });
+        }
+
+        // ================= PENGATURAN MQTT =================
+        const broker = "broker.emqx.io";
+        const port = 8084; 
+        const topicSuhu = "itsig/ruangan/suhu";
+        const topicPerintah = "itsig/ac/perintah";
+        
+        const clientId = "WebITSIG_" + Math.random().toString(16).substr(2, 8);
+        const client = new Paho.MQTT.Client(broker, port, clientId);
+
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+
+        function connectMQTT() {
+            setUIState(false); // Kunci kontrol selama mencoba terhubung
+            updateStatus("MENGHUBUNGKAN...", "bg-yellow-500", "text-yellow-500", "animate-pulse");
+            
+            document.getElementById("controlPlaceholder").classList.remove("hidden");
+            document.getElementById("controlPanels").classList.add("hidden");
+
+            client.connect({
+                useSSL: true, 
+                onSuccess: onConnect,
+                onFailure: onFailure
+            });
+        }
+
+        function onConnect() {
+            updateStatus("ONLINE", "bg-success", "text-success", "animate-none");
+            client.subscribe(topicSuhu);
+            
+            document.getElementById("controlPlaceholder").classList.add("hidden");
+            document.getElementById("controlPanels").classList.remove("hidden");
+            
+            isPowerOn = true;
+            document.getElementById("remoteOffOverlay").classList.add("hidden");
+            setUIState(true); // Buka kunci kontrol
+        }
+
+        function onFailure(responseObject) {
+            setUIState(false);
+            updateStatus("GAGAL KONEK", "bg-danger", "text-danger", "animate-none");
+            document.getElementById("controlPlaceholder").classList.remove("hidden");
+            document.getElementById("controlPanels").classList.add("hidden");
+            
+            setTimeout(connectMQTT, 5000);
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                setUIState(false);
+                updateStatus("TERPUTUS", "bg-danger", "text-danger", "animate-pulse");
+                document.getElementById("controlPlaceholder").classList.remove("hidden");
+                document.getElementById("controlPanels").classList.add("hidden");
+                
+                setTimeout(connectMQTT, 3000);
+            }
+        }
+
+        function onMessageArrived(message) {
+            if (message.destinationName === topicSuhu) {
+                let suhu = parseFloat(message.payloadString);
+                let elSuhu = document.getElementById("suhuValue");
+                let elSatuan = document.getElementById("suhuSatuan");
+                elSuhu.innerText = suhu;
+
+                // Hitung Waktu Pembaruan
+                let now = new Date();
+                let timeString = now.toLocaleTimeString('id-ID', { hour12: false });
+                document.getElementById("lastUpdated").innerText = "Diperbarui: " + timeString;
+
+                // Pewarnaan dinamis untuk teks Suhu
+                let colorHex = '#f4f4f5'; // white (normal)
+                let gradientHex = 'rgba(244, 244, 245, 0.3)';
+
+                if(suhu >= 28.0) {
+                    elSuhu.className = "text-5xl font-light text-danger tracking-tighter transition-colors duration-500";
+                    elSatuan.className = "text-lg text-danger/80 font-light mt-1.5 ml-1 transition-colors duration-500";
+                    colorHex = '#f87171';
+                    gradientHex = 'rgba(248, 113, 113, 0.3)';
+                } else if (suhu <= 22.0) {
+                    elSuhu.className = "text-5xl font-light text-accent tracking-tighter transition-colors duration-500";
+                    elSatuan.className = "text-lg text-accent/80 font-light mt-1.5 ml-1 transition-colors duration-500";
+                    colorHex = '#38bdf8';
+                    gradientHex = 'rgba(56, 189, 248, 0.3)';
+                } else {
+                    elSuhu.className = "text-5xl font-light text-white tracking-tighter transition-colors duration-500";
+                    elSatuan.className = "text-lg text-zinc-400 font-light mt-1.5 ml-1 transition-colors duration-500";
+                }
+
+                // Perbarui Data Grafik Chart.js
+                if(tempChart) {
+                    if (chartData.length >= maxChartPoints) {
+                        chartData.shift();
+                        chartLabels.shift();
+                    }
+                    chartData.push(suhu);
+                    chartLabels.push(timeString);
+
+                    // Update warna garis grafik sesuai suhu
+                    tempChart.data.datasets[0].borderColor = colorHex;
+                    
+                    // Update gradien
+                    const ctx = document.getElementById('tempChart').getContext('2d');
+                    let newGradient = ctx.createLinearGradient(0, 0, 0, 80);
+                    newGradient.addColorStop(0, gradientHex);
+                    newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    tempChart.data.datasets[0].backgroundColor = newGradient;
+
+                    tempChart.update();
+                }
+            }
+        }
+
+        function kirimPerintah(perintah, pesanToast) {
+            if (!client.isConnected()) {
+                showToast("Koneksi terputus!", "error");
+                return;
+            }
+            let message = new Paho.MQTT.Message(perintah);
+            message.destinationName = topicPerintah;
+            client.send(message);
+            showToast(pesanToast, "success");
+        }
+
+        function konfirmasiResetWifi() {
+            if(confirm("Memutus Wi-Fi akan me-restart alat. Lanjutkan?")) {
+                kirimPerintah('RESET_WIFI', 'Alat di-restart.');
+            }
+        }
+
+        function updateStatus(text, dotColor, textColor, animationClass) {
+            document.getElementById("connText").innerText = text;
+            document.getElementById("connText").className = textColor;
+            let dot = document.getElementById("connDot");
+            dot.className = `w-1.5 h-1.5 rounded-full mr-2 ${dotColor} ${animationClass}`;
+        }
+
+        let toastTimeout;
+        function showToast(msg, type) {
+            let toast = document.getElementById("toastBox");
+            let iconBox = document.getElementById("toastIconBox");
+            document.getElementById("toastMsg").innerText = msg;
+            
+            iconBox.className = type === "error" ? "w-2.5 h-2.5 rounded-full bg-danger mr-3" : "w-2.5 h-2.5 rounded-full bg-success mr-3";
+            
+            toast.classList.add("toast-show");
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => { toast.classList.remove("toast-show"); }, 3000);
+        }
+
+        // Startup
+        window.onload = async () => {
+            initChart(); // Render grafik kosong dulu
+            try {
+                await initDatabase();
+                await initDirectory(); 
+                connectMQTT();   
+            } catch (err) {
+                console.error("Gagal memulai sistem: ", err);
+            }
+        };
+    </script>
+</body>
+</html>
