@@ -34,6 +34,7 @@
                         accentDark: '#0284c7',
                         danger: '#f87171',
                         success: '#34d399',
+                        warning: '#fbbf24',
                         lcdBg: '#121f26',
                         lcdText: '#67e8f9'
                     }
@@ -76,15 +77,37 @@
             </div>
         </div>
 
-        <!-- 1. WIDGET SUHU & GRAFIK -->
+        <!-- 1. WIDGET STATUS RUANGAN & GRAFIK -->
         <div class="px-6 pt-5 pb-3 border-b border-borderCol/20 bg-gradient-to-b from-surfaceAlt/10 to-transparent">
-            <div class="flex justify-between items-center mb-1">
-                <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Suhu Saat Ini</span>
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Kondisi Ruangan</span>
                 <span id="lastUpdated" class="text-[9px] text-zinc-600 font-mono tracking-wider">Diperbarui: --:--:--</span>
             </div>
-            <div class="flex items-start mb-3">
-                <span id="suhuValue" class="text-5xl font-light text-zinc-400 tracking-tighter transition-colors duration-500">--</span>
-                <span id="suhuSatuan" class="text-lg text-zinc-600 font-light mt-1.5 ml-1 transition-colors duration-500">°C</span>
+            
+            <!-- Grid Suhu & Kelembapan -->
+            <div class="flex justify-between items-end mb-4">
+                <!-- Suhu -->
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <svg class="w-3 h-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        <span class="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Suhu</span>
+                    </div>
+                    <div class="flex items-start">
+                        <span id="suhuValue" class="text-5xl font-light text-zinc-400 tracking-tighter transition-colors duration-500">--</span>
+                        <span id="suhuSatuan" class="text-lg text-zinc-600 font-light mt-1.5 ml-1 transition-colors duration-500">°C</span>
+                    </div>
+                </div>
+                <!-- Kelembapan -->
+                <div class="flex flex-col items-end">
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <span class="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Kelembapan</span>
+                        <svg class="w-3 h-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+                    </div>
+                    <div class="flex items-start">
+                        <span id="humidValue" class="text-3xl font-light text-zinc-400 tracking-tighter transition-colors duration-500">--</span>
+                        <span id="humidSatuan" class="text-sm text-zinc-600 font-light mt-1 ml-1 transition-colors duration-500">%</span>
+                    </div>
+                </div>
             </div>
             <!-- Container Grafik -->
             <div class="w-full h-16 opacity-90">
@@ -131,7 +154,8 @@
                 
                 <!-- Notifikasi Kustom Aktif (Hanya muncul jika profil Kustom dipilih) -->
                 <div id="customActiveBadge" class="hidden justify-center mb-3">
-                    <span class="bg-accent/10 border border-accent/20 text-accent text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
+                    <span class="bg-accent/10 border border-accent/20 text-accent text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full flex items-center">
+                        <svg class="w-2.5 h-2.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         Mode Kustom
                     </span>
                 </div>
@@ -172,13 +196,21 @@
 
                 <!-- Tombol Khusus Belajar / Scan (Hanya muncul di Profil Kustom) -->
                 <div id="customLearnBox" class="hidden mt-6 p-4 bg-surfaceAlt/30 border border-borderCol/50 rounded-xl">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-[10px] text-zinc-400 font-semibold tracking-widest uppercase">Perbarui Sinyal Remot</span>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[10px] text-zinc-400 font-semibold tracking-widest uppercase">Opsi Profil Kustom</span>
                     </div>
-                    <button onclick="kirimPerintah('BELAJAR', 'Arahkan remot asli ke sensor & tekan Power!')" class="ac-control btn-press w-full bg-accent/20 hover:bg-accent hover:text-bgBase border border-accent/30 text-accent p-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center disabled:opacity-50">
-                        <svg class="w-3.5 h-3.5 fill-current mr-2" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-                        SCAN REMOT ASLI
-                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Scan Ulang -->
+                        <button onclick="kirimPerintah('BELAJAR', 'Arahkan remot asli & tekan Power!')" class="ac-control btn-press w-full bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent p-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 fill-current mr-2" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+                            SCAN ULANG
+                        </button>
+                        <!-- Hapus Profil (Per Profil) -->
+                        <button onclick="hapusProfilKustomAktif()" class="ac-control btn-press w-full bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger p-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 fill-current mr-2" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                            HAPUS PROFIL
+                        </button>
+                    </div>
                 </div>
 
             </div>
@@ -207,10 +239,10 @@
         <!-- 4. PENGATURAN BAWAH -->
         <div class="px-6 mt-8 pt-4 border-t border-borderCol/30 flex justify-between">
             <button onclick="hapusDatabaseKustom()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-danger transition uppercase tracking-wider disabled:opacity-50">
-                Hapus Database Lokal
+                Format Data Sistem
             </button>
-            <button onclick="konfirmasiResetWifi()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-yellow-500 transition uppercase tracking-wider disabled:opacity-50">
-                Putus Wi-Fi
+            <button onclick="konfirmasiResetWifi()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-warning transition uppercase tracking-wider disabled:opacity-50">
+                Putus Wi-Fi Alat
             </button>
         </div>
 
@@ -311,23 +343,51 @@
         }
 
         function saveProfileToDB(profile) {
-            return new Promise((resolve) => {
-                let transaction = db.transaction([storeName], "readwrite");
-                let store = transaction.objectStore(storeName);
-                store.put(profile);
-                transaction.oncomplete = function() { resolve(); };
+            return new Promise((resolve, reject) => {
+                try {
+                    let transaction = db.transaction([storeName], "readwrite");
+                    let store = transaction.objectStore(storeName);
+                    store.put(profile);
+                    transaction.oncomplete = function() { resolve(); };
+                    transaction.onerror = function(e) { reject(e); };
+                } catch(e) {
+                    reject(e);
+                }
+            });
+        }
+
+        // Peningkatan: Menambahkan Try-Catch dan eksekusi bersih
+        function deleteProfileFromDB(id) {
+            return new Promise((resolve, reject) => {
+                try {
+                    let transaction = db.transaction([storeName], "readwrite");
+                    let store = transaction.objectStore(storeName);
+                    let request = store.delete(id);
+                    
+                    transaction.oncomplete = function() { resolve(); };
+                    transaction.onerror = function(e) { reject(e); };
+                } catch(e) {
+                    reject(e);
+                }
             });
         }
 
         function clearDB() {
-            let transaction = db.transaction([storeName], "readwrite");
-            let store = transaction.objectStore(storeName);
-            store.clear();
-            transaction.oncomplete = async function() {
-                customProfiles = [];
-                kirimPerintah('RESET', 'Memori lokal dan alat telah dihapus!');
-                await initDirectory();
-            };
+            try {
+                let transaction = db.transaction([storeName], "readwrite");
+                let store = transaction.objectStore(storeName);
+                store.clear();
+                transaction.oncomplete = async function() {
+                    customProfiles = [];
+                    kirimPerintah('RESET', 'Memori lokal dan alat telah dihapus!');
+                    await initDirectory();
+                    
+                    document.getElementById("acBrand").value = "SAMSUNG";
+                    updateModelList();
+                };
+            } catch(e) {
+                console.error(e);
+            }
         }
 
         // ================= DATABASE DIREKTORI AC =================
@@ -454,8 +514,47 @@
             document.getElementById("acModel").value = newId;
         }
 
+        // Peningkatan: Penghapusan Profil Kustom Anti-Gagal
+        async function hapusProfilKustomAktif() {
+            let modelSelect = document.getElementById("acModel");
+            if (modelSelect.selectedIndex === -1) return; // Cegah error jika kosong
+            
+            let activeId = modelSelect.value;
+            let activeName = modelSelect.options[modelSelect.selectedIndex].text;
+
+            if(confirm(`Yakin ingin menghapus profil "${activeName}" dari memori?`)) {
+                try {
+                    // Hapus dari database IndexedDB
+                    await deleteProfileFromDB(activeId);
+                    
+                    // Force Hapus dari array Cache agar web tidak reload profil hantu
+                    customProfiles = customProfiles.filter(p => p.id !== activeId);
+                    
+                    showToast(`Profil ${activeName} berhasil dihapus!`, "success");
+                    
+                    // Refresh direktori dropdown
+                    await initDirectory();
+                    
+                    // Otomatis pindah ke mode default SAMSUNG jika kustom sudah habis semua
+                    let brandSelect = document.getElementById("acBrand");
+                    if(customProfiles.length === 0) {
+                        brandSelect.value = "SAMSUNG";
+                    } else {
+                        brandSelect.value = "KUSTOM TERSIMPAN";
+                    }
+                    
+                    // Perbarui tampilan UI
+                    updateModelList();
+                    
+                } catch (err) {
+                    console.error("Gagal menghapus profil:", err);
+                    showToast("Gagal menghapus profil!", "error");
+                }
+            }
+        }
+
         function hapusDatabaseKustom() {
-            if(confirm("Yakin ingin menghapus seluruh profil kustom dan memori alat?")) {
+            if(confirm("AWAS: Format sistem akan menghapus SELURUH profil kustom dan memori alat di atap. Lanjutkan?")) {
                 clearDB();
             }
         }
@@ -518,7 +617,10 @@
         // ================= PENGATURAN MQTT =================
         const broker = "broker.emqx.io";
         const port = 8084; 
+        
+        // Topik-topik sensor
         const topicSuhu = "itsig/ruangan/suhu";
+        const topicKelembapan = "itsig/ruangan/kelembapan";
         const topicPerintah = "itsig/ac/perintah";
         
         const clientId = "WebITSIG_" + Math.random().toString(16).substr(2, 8);
@@ -528,8 +630,8 @@
         client.onMessageArrived = onMessageArrived;
 
         function connectMQTT() {
-            setUIState(false); // Kunci kontrol selama mencoba terhubung
-            updateStatus("MENGHUBUNGKAN...", "bg-yellow-500", "text-yellow-500", "animate-pulse");
+            setUIState(false); 
+            updateStatus("MENGHUBUNGKAN...", "bg-warning", "text-warning", "animate-pulse");
             
             document.getElementById("controlPlaceholder").classList.remove("hidden");
             document.getElementById("controlPanels").classList.add("hidden");
@@ -544,13 +646,14 @@
         function onConnect() {
             updateStatus("ONLINE", "bg-success", "text-success", "animate-none");
             client.subscribe(topicSuhu);
+            client.subscribe(topicKelembapan); // Dengarkan topik kelembapan juga
             
             document.getElementById("controlPlaceholder").classList.add("hidden");
             document.getElementById("controlPanels").classList.remove("hidden");
             
             isPowerOn = true;
             document.getElementById("remoteOffOverlay").classList.add("hidden");
-            setUIState(true); // Buka kunci kontrol
+            setUIState(true); 
         }
 
         function onFailure(responseObject) {
@@ -574,19 +677,19 @@
         }
 
         function onMessageArrived(message) {
+            // Pembaruan waktu universal untuk sensor apa pun yang masuk
+            let now = new Date();
+            let timeString = now.toLocaleTimeString('id-ID', { hour12: false });
+            document.getElementById("lastUpdated").innerText = "Diperbarui: " + timeString;
+
+            // Logika Update Suhu
             if (message.destinationName === topicSuhu) {
                 let suhu = parseFloat(message.payloadString);
                 let elSuhu = document.getElementById("suhuValue");
                 let elSatuan = document.getElementById("suhuSatuan");
                 elSuhu.innerText = suhu;
 
-                // Hitung Waktu Pembaruan
-                let now = new Date();
-                let timeString = now.toLocaleTimeString('id-ID', { hour12: false });
-                document.getElementById("lastUpdated").innerText = "Diperbarui: " + timeString;
-
-                // Pewarnaan dinamis untuk teks Suhu
-                let colorHex = '#f4f4f5'; // white (normal)
+                let colorHex = '#f4f4f5'; 
                 let gradientHex = 'rgba(244, 244, 245, 0.3)';
 
                 if(suhu >= 28.0) {
@@ -604,7 +707,7 @@
                     elSatuan.className = "text-lg text-zinc-400 font-light mt-1.5 ml-1 transition-colors duration-500";
                 }
 
-                // Perbarui Data Grafik Chart.js
+                // Update Grafik
                 if(tempChart) {
                     if (chartData.length >= maxChartPoints) {
                         chartData.shift();
@@ -612,18 +715,33 @@
                     }
                     chartData.push(suhu);
                     chartLabels.push(timeString);
-
-                    // Update warna garis grafik sesuai suhu
                     tempChart.data.datasets[0].borderColor = colorHex;
                     
-                    // Update gradien
                     const ctx = document.getElementById('tempChart').getContext('2d');
                     let newGradient = ctx.createLinearGradient(0, 0, 0, 80);
                     newGradient.addColorStop(0, gradientHex);
                     newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
                     tempChart.data.datasets[0].backgroundColor = newGradient;
-
                     tempChart.update();
+                }
+            } 
+            // Logika Update Kelembapan
+            else if (message.destinationName === topicKelembapan) {
+                let humid = parseFloat(message.payloadString);
+                let elHumid = document.getElementById("humidValue");
+                let elHumidSatuan = document.getElementById("humidSatuan");
+                elHumid.innerText = humid;
+
+                // Pewarnaan dinamis untuk kelembapan (Normalnya 40-60%)
+                if(humid > 65.0) { // Terlalu lembap
+                    elHumid.className = "text-3xl font-light text-accent tracking-tighter transition-colors duration-500";
+                    elHumidSatuan.className = "text-sm text-accent/80 font-light mt-1 ml-1 transition-colors duration-500";
+                } else if (humid < 30.0) { // Terlalu kering
+                    elHumid.className = "text-3xl font-light text-warning tracking-tighter transition-colors duration-500";
+                    elHumidSatuan.className = "text-sm text-warning/80 font-light mt-1 ml-1 transition-colors duration-500";
+                } else {
+                    elHumid.className = "text-3xl font-light text-white tracking-tighter transition-colors duration-500";
+                    elHumidSatuan.className = "text-sm text-zinc-400 font-light mt-1 ml-1 transition-colors duration-500";
                 }
             }
         }
@@ -667,7 +785,7 @@
 
         // Startup
         window.onload = async () => {
-            initChart(); // Render grafik kosong dulu
+            initChart(); 
             try {
                 await initDatabase();
                 await initDirectory(); 
