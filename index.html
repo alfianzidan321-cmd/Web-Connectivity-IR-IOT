@@ -11,8 +11,10 @@
     <!-- Import Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Import Paho MQTT & Chart.js -->
+    <!-- Import Paho MQTT -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+    <!-- Import Chart.js untuk Grafik Suhu -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
@@ -33,7 +35,7 @@
                         danger: '#f87171',
                         success: '#34d399',
                         warning: '#fbbf24',
-                        lcdBg: '#0f171e',
+                        lcdBg: '#121f26',
                         lcdText: '#67e8f9'
                     }
                 }
@@ -43,51 +45,77 @@
     <style>
         body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; overflow-x: hidden; }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-        
         .btn-press { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn-press:active:not(:disabled) { transform: scale(0.94); }
+        .btn-press:active:not(:disabled) { transform: scale(0.92); }
         .btn-press:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        .lcd-screen { box-shadow: inset 0 3px 12px rgba(0,0,0,0.8); }
-        
-        .fade-enter-active { transition: opacity 0.4s ease-out, transform 0.4s ease-out; }
-        .fade-enter-from { opacity: 0; transform: translateY(15px); }
-        
-        .lcd-glow { text-shadow: 0 0 12px rgba(103, 232, 249, 0.6); }
-        
-        @keyframes pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.15); color: #fff; }
-            100% { transform: scale(1); }
-        }
-        .anim-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .lcd-screen { box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
 
-        @keyframes slideUp {
-            from { bottom: -50px; opacity: 0; transform: translate(-50%, 10px); }
-            to { bottom: 24px; opacity: 1; transform: translate(-50%, 0); }
-        }
+        /* ================= ANIMASI ENTRY SUPER PROFESIONAL ================= */
+        
+        /* 1. Animasi Teks Mengetik di Splash Screen */
+        @keyframes typing { from { width: 0; opacity: 0; } to { width: 100%; opacity: 1; } }
+        .animate-typing { overflow: hidden; white-space: nowrap; animation: typing 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; display: inline-block; }
+
+        /* 2. Animasi Keluar Splash Screen */
+        .splash-exit { opacity: 0; transform: translateY(-20px) scale(1.05); visibility: hidden; transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; }
+
+        /* 3. Animasi Container Utama (Zoom Inhalus) */
+        .app-container { opacity: 0; transform: scale(0.95); transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+        .app-container.show { opacity: 1; transform: scale(1); }
+
+        /* 4. Animasi Panel Meluncur dengan Efek Pegas (Spring/Bouncy) */
+        .stagger-item { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .stagger-item.show { opacity: 1; transform: translateY(0); }
+
+        /* Animasi Toast */
+        @keyframes slideUp { from { bottom: -50px; opacity: 0; transform: translate(-50%, 10px); } to { bottom: 24px; opacity: 1; transform: translate(-50%, 0); } }
         .toast-show { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Animasi List Log (Baru) */
+        @keyframes fadeInList { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-fade-in-list { animation: fadeInList 0.4s ease-out forwards; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 selection:bg-accent selection:text-bgBase relative">
 
-    <!-- Container Dashboard Minimalis -->
-    <div class="w-full max-w-sm bg-surface rounded-[2rem] border border-borderCol/40 shadow-2xl overflow-hidden pb-6">
+    <!-- ================= SPLASH SCREEN MODERN MINIMALIS ================= -->
+    <div id="splashScreen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-bgBase transition-all duration-700 ease-in-out">
+        
+        <div class="relative flex items-center justify-center mb-6">
+            <!-- Spinner Halus (Modern Style) -->
+            <svg class="w-12 h-12 text-zinc-800 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"></circle>
+                <path class="text-accent" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 0 1 10 10"></path>
+            </svg>
+            <!-- Titik Aksen Pusat -->
+            <div class="absolute w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_rgba(56,189,248,0.8)]"></div>
+        </div>
+        
+        <div class="flex flex-col items-center fade-up">
+            <h1 class="text-lg font-semibold tracking-[0.3em] uppercase text-white mb-1">IT-SIG</h1>
+            <p class="text-[9px] font-medium text-zinc-500 tracking-[0.2em]">SMART CONTROL</p>
+        </div>
+    </div>
+
+    <!-- ================= CONTAINER UTAMA ================= -->
+    <div id="mainContainer" class="app-container w-full max-w-sm bg-surface rounded-[2rem] border border-borderCol/40 shadow-2xl overflow-hidden pb-6">
         
         <!-- Header -->
-        <div class="px-6 py-5 flex justify-between items-center border-b border-borderCol/20 stagger-item fade-enter-from fade-enter-active">
+        <div class="stagger-item px-6 py-5 flex justify-between items-center border-b border-borderCol/20">
             <div class="flex flex-col justify-center">
                 <span class="text-[9px] font-bold tracking-[0.2em] text-accent uppercase mb-1.5">Smart Control</span>
                 <h1 class="text-xl font-medium tracking-tight text-white leading-none">Ruang Utama</h1>
             </div>
-            <div id="connStatus" class="flex items-center text-[10px] tracking-wider font-semibold bg-surfaceAlt text-zinc-400 px-3 py-1.5 rounded-full border border-borderCol/30 transition-all duration-300">
+            <!-- Indikator Koneksi MQTT -->
+            <div id="connStatus" class="flex items-center text-[10px] tracking-wider font-semibold bg-surfaceAlt text-zinc-400 px-3 py-1.5 rounded-full border border-borderCol/30 transition-colors duration-300">
                 <span id="connDot" class="w-1.5 h-1.5 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>
                 <span id="connText">KONEK...</span>
             </div>
         </div>
 
-        <!-- Widget Kondisi Ruangan -->
-        <div class="px-6 pt-5 pb-3 border-b border-borderCol/20 bg-gradient-to-b from-surfaceAlt/10 to-transparent stagger-item fade-enter-from fade-enter-active relative">
+        <!-- 1. WIDGET STATUS RUANGAN & GRAFIK -->
+        <div class="stagger-item px-6 pt-5 pb-3 border-b border-borderCol/20 bg-gradient-to-b from-surfaceAlt/10 to-transparent relative">
             
             <!-- Indikator Peringatan Suhu -->
             <div id="tempAlertBadge" class="absolute top-2 right-6 hidden items-center bg-danger/20 border border-danger/30 px-2 py-1 rounded text-[9px] font-bold text-danger tracking-wider animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.3)]">
@@ -97,10 +125,12 @@
 
             <div class="flex justify-between items-center mb-3">
                 <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Kondisi Ruangan</span>
-                <span id="lastUpdated" class="text-[9px] text-zinc-600 font-mono tracking-wider transition-opacity duration-300">Diperbarui: --:--:--</span>
+                <span id="lastUpdated" class="text-[9px] text-zinc-600 font-mono tracking-wider">Diperbarui: --:--:--</span>
             </div>
             
+            <!-- Grid Suhu & Kelembapan -->
             <div class="flex justify-between items-end mb-4">
+                <!-- Suhu -->
                 <div class="flex flex-col">
                     <div class="flex items-center gap-1.5 mb-1.5">
                         <svg class="w-3 h-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -111,6 +141,7 @@
                         <span id="suhuSatuan" class="text-lg text-zinc-600 font-light mt-1.5 ml-1 transition-colors duration-500">°C</span>
                     </div>
                 </div>
+                <!-- Kelembapan -->
                 <div class="flex flex-col items-end">
                     <div class="flex items-center gap-1.5 mb-1.5">
                         <span class="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Kelembapan</span>
@@ -122,24 +153,27 @@
                     </div>
                 </div>
             </div>
-            <div class="w-full h-16 opacity-90 transition-opacity duration-500" id="chartContainer">
+            <!-- Container Grafik -->
+            <div class="w-full h-16 opacity-90">
                 <canvas id="tempChart"></canvas>
             </div>
         </div>
 
-        <!-- Direktori Profil -->
-        <div class="px-6 mt-6 space-y-3 stagger-item fade-enter-from fade-enter-active">
+        <!-- 2. DIREKTORI AC -->
+        <div class="stagger-item px-6 mt-5 space-y-3">
             <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase mb-1 block">Profil Perangkat</span>
             <div class="flex space-x-3">
                 <div class="relative w-1/2">
-                    <select id="acBrand" onchange="updateModelList(); playHapticBeep();" class="ac-control w-full bg-surface border border-borderCol/60 text-white rounded-xl px-4 py-3 text-sm font-medium focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <select id="acBrand" onchange="updateModelList()" class="ac-control w-full bg-bgBase border border-borderCol/50 text-white rounded-xl px-4 py-3 text-sm font-medium focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <!-- Opsi JavaScript -->
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-500">
                         <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                     </div>
                 </div>
                 <div class="relative w-1/2">
-                    <select id="acModel" onchange="resetRemoteUI(); playHapticBeep();" class="ac-control w-full bg-surface border border-borderCol/60 text-zinc-300 rounded-xl px-4 py-3 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <select id="acModel" onchange="resetRemoteUI()" class="ac-control w-full bg-bgBase border border-borderCol/50 text-zinc-300 rounded-xl px-4 py-3 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <!-- Opsi JavaScript -->
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-500">
                         <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
@@ -148,825 +182,693 @@
             </div>
         </div>
 
-        <!-- Area Kontrol -->
-        <div id="controlPlaceholder" class="px-6 mt-6 mb-2 py-10 mx-6 flex flex-col items-center justify-center border border-borderCol/30 border-dashed rounded-2xl transition-opacity duration-300">
-            <span class="w-6 h-6 border-2 border-zinc-600 border-t-accent rounded-full animate-spin mb-3"></span>
-            <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Menunggu Sistem...</span>
-        </div>
-
-        <div id="controlPanels" class="hidden opacity-0 transition-opacity duration-500 stagger-item fade-enter-from fade-enter-active">
-            
-            <!-- Panel Remote Utama -->
-            <div id="panelRemote" class="px-6 mt-6 transition-all duration-300">
-                <div id="customActiveBadge" class="hidden justify-center mb-3">
-                    <span class="bg-accent/10 border border-accent/20 text-accent text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full flex items-center">
-                        <svg class="w-2.5 h-2.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        Mode Kustom
-                    </span>
-                </div>
-
-                <div class="lcd-screen bg-lcdBg border border-borderCol/40 rounded-2xl p-5 mb-5 relative overflow-hidden transition-colors duration-300">
-                    
-                    <!-- Indikator Timer Aktif -->
-                    <div id="timerDisplayPanel" class="hidden absolute top-3 left-1/2 transform -translate-x-1/2 flex items-center bg-warning/20 border border-warning/30 px-3 py-1 rounded-full text-[10px] font-mono text-warning tracking-widest backdrop-blur-md z-10 shadow-[0_0_10px_rgba(251,191,36,0.2)]">
-                        <svg class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span id="timerCountdown" class="font-bold">00:00</span>
-                    </div>
-
-                    <div class="flex justify-between items-center text-[10px] text-lcdText/70 font-mono mb-2 mt-2 tracking-widest font-semibold transition-opacity" id="lcdTopRow">
-                        <span id="remoteModeDisplay">COOL</span>
-                        <span id="remoteFanDisplay">FAN AUTO</span>
-                    </div>
-                    <div class="flex justify-center items-start pt-1 pb-2">
-                        <span id="remoteTempDisplay" class="text-7xl font-light text-lcdText inline-block">24</span>
-                        <span class="text-2xl text-lcdText/60 ml-2 mt-2 font-light">°C</span>
-                    </div>
-
-                    <div id="remoteOffOverlay" class="absolute inset-0 bg-lcdBg/95 flex items-center justify-center transition-opacity duration-500 opacity-0 pointer-events-none z-20">
-                        <span class="text-zinc-600 text-sm tracking-[0.3em] font-mono font-medium">SISTEM OFF</span>
-                    </div>
-                </div>
-
-                <!-- Navigasi Suhu & Power -->
-                <div class="grid grid-cols-3 gap-4 items-center justify-items-center relative">
-                    <button onclick="ubahSuhu(-1)" class="ac-control btn-press w-14 h-14 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50">
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
-                    </button>
-                    
-                    <button onclick="togglePower()" id="btnPower" class="ac-control btn-press w-16 h-16 bg-white hover:bg-zinc-200 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center transition-all duration-300 disabled:shadow-none disabled:bg-zinc-700 z-30">
-                        <svg class="w-6 h-6 stroke-bgBase stroke-2 transition-colors duration-300" id="iconPower" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
-                    </button>
-
-                    <button onclick="ubahSuhu(1)" class="ac-control btn-press w-14 h-14 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50">
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20" style="transform: rotate(180deg);"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
-                    </button>
-                </div>
-
-                <!-- Panel Timer (Hanya Standar) -->
-                <div id="standardFeatureBox" class="mt-6 pt-5 border-t border-borderCol/30 flex justify-between gap-3">
-                    <button onclick="setTimer(30)" class="ac-control btn-press flex-1 bg-surfaceAlt/50 hover:bg-surfaceAlt border border-borderCol/40 text-zinc-400 p-2.5 rounded-xl text-[10px] font-medium transition-colors flex items-center justify-center disabled:opacity-50">
-                        <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        TIMER 30m
-                    </button>
-                    <button onclick="setTimer(60)" class="ac-control btn-press flex-1 bg-surfaceAlt/50 hover:bg-surfaceAlt border border-borderCol/40 text-zinc-400 p-2.5 rounded-xl text-[10px] font-medium transition-colors flex items-center justify-center disabled:opacity-50">
-                        <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        TIMER 1h
-                    </button>
-                    <button onclick="cancelTimer()" class="ac-control btn-press flex-1 bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger p-2.5 rounded-xl text-[10px] font-medium transition-colors flex items-center justify-center disabled:opacity-50">
-                        BATAL
-                    </button>
-                </div>
-
-                <!-- Tombol Khusus Belajar (Hanya Kustom) -->
-                <div id="customLearnBox" class="hidden mt-6 pt-5 border-t border-borderCol/30">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase pl-1">Opsi Kustom</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="kirimPerintah('BELAJAR', 'Arahkan remot asli & tekan Power!')" class="ac-control btn-press w-full bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent p-3 rounded-xl text-[11px] font-semibold transition-colors flex items-center justify-center disabled:opacity-50">
-                            SCAN ULANG
-                        </button>
-                        <button onclick="hapusProfilKustomAktif()" class="ac-control btn-press w-full bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger p-3 rounded-xl text-[11px] font-semibold transition-colors flex items-center justify-center disabled:opacity-50">
-                            HAPUS
-                        </button>
-                    </div>
-                </div>
+        <!-- ================= 3. AREA KONTROL DINAMIS ================= -->
+        <div class="stagger-item">
+            <!-- Placeholder Saat Belum Konek -->
+            <div id="controlPlaceholder" class="px-6 mt-6 mb-2 py-10 mx-6 flex flex-col items-center justify-center border border-borderCol/30 border-dashed rounded-2xl transition-all duration-300">
+                <span class="w-6 h-6 border-2 border-zinc-600 border-t-accent rounded-full animate-spin mb-3"></span>
+                <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Menunggu Sistem...</span>
             </div>
 
-            <!-- Panel Tambah Kustom Baru -->
-            <div id="panelAddCustom" class="px-6 mt-6 hidden flex-col gap-3 transition-all duration-300">
-                <div class="bg-accent/10 border border-accent/20 p-4 rounded-2xl mb-1">
-                    <p class="text-xs text-accent leading-relaxed">
-                        Sistem akan membuat ruang penyimpanan (database lokal) baru untuk profil AC ini.
-                    </p>
-                </div>
-                <div class="mb-2">
-                    <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase pl-1">Nama Profil Baru</span>
-                    <input type="text" id="customNameInput" placeholder="Contoh: AC Ruang Rapat" class="w-full bg-surface border border-borderCol/60 text-white rounded-xl px-4 py-4 mt-2 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors placeholder:text-zinc-600">
-                </div>
+            <!-- Wrapper Panel Utama (Sembunyi by Default) -->
+            <div id="controlPanels" class="hidden transition-all duration-300">
                 
-                <button onclick="simpanCustomBaru()" class="ac-control btn-press w-full bg-white hover:bg-zinc-200 text-bgBase p-4 rounded-xl font-semibold transition-all flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:shadow-none">
-                    <span class="tracking-wide">SIMPAN PROFIL & SCAN</span>
-                </button>
+                <!-- PANEL A: FULL REMOTE CONTROL -->
+                <div id="panelRemote" class="px-6 mt-6">
+                    
+                    <div id="customActiveBadge" class="hidden justify-center mb-3">
+                        <span class="bg-accent/10 border border-accent/20 text-accent text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full flex items-center">
+                            <svg class="w-2.5 h-2.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            Mode Kustom
+                        </span>
+                    </div>
+
+                    <!-- Layar Digital Remote -->
+                    <div class="lcd-screen bg-lcdBg border border-borderCol/50 rounded-2xl p-4 mb-5 relative overflow-hidden">
+                        
+                        <!-- Panel Timer -->
+                        <div id="timerDisplayPanel" class="hidden absolute top-3 right-3 flex items-center bg-warning/20 border border-warning/30 px-2 py-0.5 rounded text-[9px] font-mono text-warning tracking-wider z-10">
+                            <svg class="w-2.5 h-2.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span id="timerCountdown">00:00</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-[10px] text-lcdText/80 font-mono mb-1 tracking-widest font-medium">
+                            <span id="remoteModeDisplay">MODE COOL</span>
+                            <span id="remoteFanDisplay">FAN AUTO</span>
+                        </div>
+                        <div class="flex justify-center items-start pt-1 pb-2">
+                            <span id="remoteTempDisplay" class="text-6xl font-light text-lcdText">24</span>
+                            <span class="text-xl text-lcdText/70 ml-1 mt-1">°C</span>
+                        </div>
+                        <!-- Overlay saat AC Mati -->
+                        <div id="remoteOffOverlay" class="absolute inset-0 bg-lcdBg flex items-center justify-center hidden">
+                            <span class="text-zinc-700 text-sm tracking-widest font-mono font-medium">PERANGKAT MATI</span>
+                        </div>
+                    </div>
+
+                    <!-- Tombol Navigasi Remote -->
+                    <div class="grid grid-cols-3 gap-4 items-center justify-items-center relative">
+                        <button onclick="ubahSuhu(-1)" class="ac-control btn-press w-12 h-12 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition disabled:opacity-50">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        </button>
+                        
+                        <button onclick="togglePower()" id="btnPower" class="ac-control btn-press w-16 h-16 bg-white hover:bg-zinc-200 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center transition disabled:shadow-none disabled:bg-zinc-600">
+                            <svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                        </button>
+
+                        <button onclick="ubahSuhu(1)" class="ac-control btn-press w-12 h-12 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition disabled:opacity-50">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20" style="transform: rotate(180deg);"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Panel Timer -->
+                    <div id="standardFeatureBox" class="mt-6 pt-5 border-t border-borderCol/30 flex justify-between gap-3">
+                        <button onclick="setTimer(30)" class="ac-control btn-press flex-1 bg-surfaceAlt/50 hover:bg-surfaceAlt border border-borderCol/40 text-zinc-400 p-2.5 rounded-xl text-[10px] font-medium transition-colors flex items-center justify-center disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            TIMER 30m
+                        </button>
+                        <button onclick="setTimer(60)" class="ac-control btn-press flex-1 bg-surfaceAlt/50 hover:bg-surfaceAlt border border-borderCol/40 text-zinc-400 p-2.5 rounded-xl text-[10px] font-medium transition-colors flex items-center justify-center disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            TIMER 1h
+                        </button>
+                        <button onclick="cancelTimer()" class="ac-control btn-press flex-1 bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger p-2.5 rounded-xl text-[10px] font-medium transition-colors flex items-center justify-center disabled:opacity-50">
+                            BATAL
+                        </button>
+                    </div>
+
+                    <!-- Tombol Khusus Belajar / Scan (Hanya muncul di Profil Kustom) -->
+                    <div id="customLearnBox" class="hidden mt-6 p-4 bg-surfaceAlt/30 border border-borderCol/50 rounded-xl">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[10px] text-zinc-400 font-semibold tracking-widest uppercase">Opsi Profil Kustom</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="kirimPerintah('BELAJAR', 'Arahkan remot asli & tekan Power!')" class="ac-control btn-press w-full bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent p-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center disabled:opacity-50">
+                                <svg class="w-3.5 h-3.5 fill-current mr-2" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+                                SCAN ULANG
+                            </button>
+                            <button onclick="hapusProfilKustomAktif()" class="ac-control btn-press w-full bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger p-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center disabled:opacity-50">
+                                <svg class="w-3.5 h-3.5 fill-current mr-2" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                HAPUS PROFIL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL B: FORM TAMBAH KUSTOM BARU -->
+                <div id="panelAddCustom" class="px-6 mt-6 hidden flex-col gap-3">
+                    <div class="bg-accent/10 border border-accent/20 p-4 rounded-xl mb-2">
+                        <p class="text-xs text-accent leading-relaxed">
+                            Sistem akan membuat ruang penyimpanan (database lokal) baru untuk remot ini.
+                        </p>
+                    </div>
+                    <div class="mb-1">
+                        <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase">Nama Profil Baru</span>
+                        <input type="text" id="customNameInput" placeholder="Contoh: AC Ruang Rapat" class="w-full bg-bgBase border border-borderCol/50 text-white rounded-xl px-4 py-3.5 mt-2 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none transition placeholder:text-zinc-600">
+                    </div>
+                    
+                    <button onclick="simpanCustomBaru()" class="ac-control btn-press w-full bg-white hover:bg-zinc-200 text-bgBase p-4 rounded-xl font-semibold transition flex items-center justify-center mt-1 shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:shadow-none">
+                        <span class="tracking-wide">SIMPAN PROFIL & MULAI SCAN</span>
+                    </button>
+                </div>
             </div>
+
+            <!-- ================= PANEL QOL: LOG AKTIVITAS (BARU) ================= -->
+            <div id="panelActivityLog" class="px-6 mt-6 pt-5 border-t border-borderCol/30 hidden">
+                <span class="text-[10px] text-zinc-500 font-semibold tracking-widest uppercase mb-3 block">Log Aktivitas</span>
+                <ul id="activityLog" class="space-y-2 text-[11px] font-mono text-zinc-400">
+                    <li class="flex justify-between items-center bg-surfaceAlt/20 border border-borderCol/20 px-3 py-2 rounded-lg">
+                        <span class="text-zinc-500">Sistem bersiap...</span>
+                        <span class="text-zinc-600">-</span>
+                    </li>
+                </ul>
+            </div>
+            <!-- ================================================================= -->
+            
+        </div>
+        
+        <!-- =========================================================== -->
+
+        <!-- 4. PENGATURAN BAWAH -->
+        <div class="stagger-item px-6 mt-8 pt-4 border-t border-borderCol/30 flex justify-between">
+            <button onclick="hapusDatabaseKustom()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-danger transition uppercase tracking-wider disabled:opacity-50">
+                Format Data Sistem
+            </button>
+            <button onclick="konfirmasiResetWifi()" class="ac-control text-[10px] font-medium text-zinc-500 hover:text-warning transition uppercase tracking-wider disabled:opacity-50">
+                Putus Wi-Fi Alat
+            </button>
         </div>
 
-        <!-- Footer -->
-        <div class="px-6 mt-6 pt-5 border-t border-borderCol/20 flex justify-between stagger-item fade-enter-from fade-enter-active">
-            <button onclick="hapusDatabaseKustom()" class="ac-control text-[10px] font-semibold text-zinc-600 hover:text-danger transition-colors uppercase tracking-widest disabled:opacity-50 flex items-center">
-                Format Data
-            </button>
-            <button onclick="konfirmasiResetWifi()" class="ac-control text-[10px] font-semibold text-zinc-600 hover:text-warning transition-colors uppercase tracking-widest disabled:opacity-50 flex items-center">
-                Putus Wi-Fi
-            </button>
-        </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toastBox" class="fixed -bottom-20 left-1/2 transform -translate-x-1/2 bg-surfaceAlt border border-borderCol/80 shadow-2xl text-white px-5 py-3.5 rounded-2xl flex items-center z-50 transition-all duration-300 pointer-events-none">
+    <!-- Custom Toast Notification -->
+    <div id="toastBox" class="fixed -bottom-20 left-1/2 transform -translate-x-1/2 bg-surfaceAlt border border-borderCol shadow-2xl text-white px-5 py-3 rounded-2xl flex items-center z-50 transition-all duration-300 pointer-events-none">
         <div id="toastIconBox" class="w-2.5 h-2.5 rounded-full bg-success mr-3"></div>
         <span id="toastMsg" class="font-medium text-sm tracking-wide">Perintah terkirim!</span>
     </div>
 
     <script>
-        // ================= SISTEM NOTIFIKASI SUHU EKSTREM =================
-        let lastAlertTime = 0;
-        const ALERT_COOLDOWN = 300000; // 5 Menit cooldown agar tidak spam
+        // ================= KONTROL MODE DEMO & KONEKSI =================
+        let isDemoMode = false;
+        let demoInterval;
+        let connectionTimeout;
 
-        function cekPeringatanSuhu(suhuSaatIni) {
-            if (suhuSaatIni >= 30.0) {
-                let now = Date.now();
-                if (now - lastAlertTime > ALERT_COOLDOWN) {
-                    lastAlertTime = now;
-                    kirimPeringatanPenuh(suhuSaatIni);
-                }
+        // ================= FUNGSI LOG AKTIVITAS QOL (BARU) =================
+        function addLog(action) {
+            const logList = document.getElementById('activityLog');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            const li = document.createElement('li');
+            li.className = "flex justify-between items-center bg-surfaceAlt/40 border border-borderCol/30 px-3 py-2 rounded-lg animate-fade-in-list text-white";
+            li.innerHTML = `<span>${action}</span><span class="text-zinc-500">${timeStr}</span>`;
+            
+            // Hapus log placeholder jika masih ada
+            if(logList.children[0] && logList.children[0].innerText.includes("Sistem bersiap")) {
+                logList.innerHTML = '';
             }
+            
+            logList.insertBefore(li, logList.firstChild);
+            // Maksimal simpan 3 log terakhir agar UI tidak kepanjangan
+            if (logList.children.length > 3) logList.removeChild(logList.lastChild);
         }
 
-        function kirimPeringatanPenuh(suhu) {
-            // 1. Tampilkan badge merah berkedip di Web
-            let badge = document.getElementById("tempAlertBadge");
-            badge.classList.remove("hidden");
-            badge.classList.add("flex");
-            
-            // Bunyi alarm pendek di web
-            setTimeout(() => playHapticBeep(), 500);
-            setTimeout(() => playHapticBeep(), 1000);
-
-            // 2. Notifikasi Bawaan HP/Laptop (Native Web Push)
-            if ("Notification" in window && Notification.permission === "granted") {
-                const notif = new Notification("🚨 Peringatan IT-SIG!", {
-                    body: `Suhu ruangan Anda menyentuh ${suhu}°C. Mohon cek kondisi ruangan.`,
-                    icon: "https://cdn-icons-png.flaticon.com/512/1684/1684375.png",
-                    vibrate: [200, 100, 200]
-                });
-            }
-
-            // Sembunyikan badge di layar web setelah 10 detik
+        // ================= KONTROL ANIMASI ENTRY PROFESIONAL =================
+        function playIntroAnimation() {
             setTimeout(() => {
-                badge.classList.remove("flex");
-                badge.classList.add("hidden");
-            }, 10000);
+                document.getElementById('splashScreen').classList.add('splash-exit');
+                
+                setTimeout(() => {
+                    document.getElementById('mainContainer').classList.add('show');
+                    const items = document.querySelectorAll('.stagger-item');
+                    items.forEach((item, index) => {
+                        setTimeout(() => {
+                            item.classList.add('show');
+                        }, 120 * index); 
+                    });
+                }, 400); 
+            }, 1800); 
         }
 
         // ================= SISTEM AUDIO & GETAR (HAPTIC) =================
         function playHapticBeep() {
-            if (navigator.vibrate) { 
-                navigator.vibrate(30); 
-            }
+            if (navigator.vibrate) { navigator.vibrate(30); }
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
                 const ctx = new AudioContext();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                
-                osc.connect(gain); 
-                gain.connect(ctx.destination);
-                
-                osc.type = 'sine'; 
-                osc.frequency.setValueAtTime(900, ctx.currentTime); 
-                gain.gain.setValueAtTime(0.05, ctx.currentTime); 
-                
-                osc.start(); 
-                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1); 
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(900, ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
                 osc.stop(ctx.currentTime + 0.1);
-            } catch(e) {
-                console.log("Audio API blocked or not supported");
-            }
+            } catch(e) { }
         }
 
         // ================= SISTEM TIMER MATI OTOMATIS =================
-        let sleepTimerInterval; 
-        let sleepTimerSeconds = 0;
+        let sleepTimerInterval; let sleepTimerSeconds = 0;
 
         function setTimer(minutes) {
             playHapticBeep();
-            if (!isPowerOn) { 
-                showToast("Nyalakan perangkat terlebih dahulu!", "error"); 
-                return; 
-            }
-            clearInterval(sleepTimerInterval); 
-            sleepTimerSeconds = minutes * 60;
-            
-            document.getElementById('timerDisplayPanel').classList.remove('hidden');
-            updateTimerUI(); 
+            if (!isPowerOn) { showToast("Nyalakan perangkat terlebih dahulu!", "error"); return; }
+            clearInterval(sleepTimerInterval); sleepTimerSeconds = minutes * 60;
+            document.getElementById('timerDisplayPanel').classList.remove('hidden'); updateTimerUI();
             showToast(`Timer diset ${minutes} menit`, "success");
-            
             sleepTimerInterval = setInterval(() => {
-                sleepTimerSeconds--; 
-                updateTimerUI();
-                
+                sleepTimerSeconds--; updateTimerUI();
                 if(sleepTimerSeconds <= 0) {
-                    clearInterval(sleepTimerInterval); 
-                    document.getElementById('timerDisplayPanel').classList.add('hidden');
-                    if(isPowerOn) togglePower(); 
-                    showToast("Waktu habis. Sistem dimatikan.", "success");
+                    clearInterval(sleepTimerInterval); document.getElementById('timerDisplayPanel').classList.add('hidden');
+                    if(isPowerOn) togglePower(); showToast("Waktu habis. Sistem dimatikan.", "success");
                 }
             }, 1000);
         }
 
         function cancelTimer() {
-            playHapticBeep(); 
-            clearInterval(sleepTimerInterval);
-            document.getElementById('timerDisplayPanel').classList.add('hidden'); 
-            showToast("Timer dibatalkan", "success");
+            playHapticBeep(); clearInterval(sleepTimerInterval);
+            document.getElementById('timerDisplayPanel').classList.add('hidden'); showToast("Timer dibatalkan", "success");
         }
 
         function updateTimerUI() {
-            let m = Math.floor(sleepTimerSeconds / 60); 
-            let s = sleepTimerSeconds % 60;
+            let m = Math.floor(sleepTimerSeconds / 60); let s = sleepTimerSeconds % 60;
             document.getElementById('timerCountdown').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
         }
 
-        // ================= ANIMASI UI =================
-        function initStaggerAnimation() {
-            const items = document.querySelectorAll('.stagger-item');
-            items.forEach((item, index) => { 
-                setTimeout(() => { item.classList.remove('fade-enter-from'); }, 100 * (index + 1)); 
-            });
-        }
-
-        function animatePanelSwitch(panelToShow, panelToHide) {
-            if (!panelToShow.classList.contains('hidden')) return;
-            
-            panelToHide.style.opacity = '0'; 
-            panelToHide.style.transform = 'translateY(10px)';
-            
-            setTimeout(() => {
-                panelToHide.classList.add('hidden'); 
-                panelToShow.classList.remove('hidden');
-                panelToShow.style.opacity = '0'; 
-                panelToShow.style.transform = 'translateY(10px)'; 
-                
-                void panelToShow.offsetWidth;
-                
-                panelToShow.style.opacity = '1'; 
-                panelToShow.style.transform = 'translateY(0)';
-            }, 300);
-        }
-
-        function triggerPopAnimation(elementId) {
-            const el = document.getElementById(elementId); 
-            el.classList.remove('anim-pop'); 
-            void el.offsetWidth; 
-            el.classList.add('anim-pop');
-        }
-
-        // ================= CHART.JS SETUP =================
-        let tempChart; 
+        // ================= SISTEM GRAFIK SUHU (Chart.js) =================
+        let tempChart;
         const maxChartPoints = 12; 
-        let chartData = []; 
+        let chartData = [];
         let chartLabels = [];
 
         function initChart() {
             const ctx = document.getElementById('tempChart').getContext('2d');
             let gradient = ctx.createLinearGradient(0, 0, 0, 80);
-            gradient.addColorStop(0, 'rgba(161, 161, 170, 0.25)'); 
-            gradient.addColorStop(1, 'rgba(161, 161, 170, 0)');
-            
+            gradient.addColorStop(0, 'rgba(161, 161, 170, 0.3)'); gradient.addColorStop(1, 'rgba(161, 161, 170, 0)');
+
             tempChart = new Chart(ctx, {
                 type: 'line',
-                data: { 
-                    labels: chartLabels, 
-                    datasets: [{ 
-                        data: chartData, 
-                        borderColor: '#a1a1aa', 
-                        backgroundColor: gradient, 
-                        borderWidth: 2, 
-                        pointRadius: 0, 
-                        pointHoverRadius: 4, 
-                        fill: true, 
-                        tension: 0.4 
-                    }] 
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData, borderColor: '#a1a1aa', backgroundColor: gradient,
+                        borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.4 
+                    }]
                 },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
+                options: {
+                    responsive: true, maintainAspectRatio: false,
                     plugins: { 
                         legend: { display: false }, 
                         tooltip: { 
-                            enabled: true, 
-                            backgroundColor: '#27272a', 
-                            titleFont: { family: 'Inter', size: 10 }, 
-                            bodyFont: { family: 'Inter', size: 12, weight: 'bold' }, 
-                            displayColors: false, 
-                            callbacks: { label: function(context) { return context.parsed.y + ' °C'; } } 
+                            enabled: true, backgroundColor: '#27272a', titleFont: { family: 'Inter', size: 10 },
+                            bodyFont: { family: 'Inter', size: 12, weight: 'bold' }, displayColors: false,
+                            callbacks: { label: function(context) { return context.parsed.y + ' °C'; } }
                         } 
-                    }, 
-                    scales: { 
-                        x: { display: false }, 
-                        y: { display: false, suggestedMin: 18, suggestedMax: 32 } 
-                    }, 
-                    animation: { duration: 500, easing: 'easeOutQuart' }, 
-                    interaction: { mode: 'index', intersect: false } 
+                    },
+                    scales: { x: { display: false }, y: { display: false, suggestedMin: 18, suggestedMax: 32 } },
+                    animation: { duration: 400 }, interaction: { mode: 'index', intersect: false }
                 }
             });
         }
 
-        // ================= INDEXEDDB SETUP =================
-        const dbName = "SmartAcDB"; 
-        const storeName = "profiles"; 
-        let db; 
-        let customProfiles = []; 
+        // ================= SISTEM DATABASE INDEXEDDB =================
+        const dbName = "SmartAcDB";
+        const storeName = "profiles";
+        let db; let customProfiles = []; 
         
         function initDatabase() {
             return new Promise((resolve, reject) => {
                 let request = indexedDB.open(dbName, 1);
-                request.onupgradeneeded = function(e) { 
-                    let database = e.target.result; 
-                    if (!database.objectStoreNames.contains(storeName)) { 
-                        database.createObjectStore(storeName, { keyPath: "id" }); 
-                    } 
+                request.onupgradeneeded = function(e) {
+                    let database = e.target.result;
+                    if (!database.objectStoreNames.contains(storeName)) { database.createObjectStore(storeName, { keyPath: "id" }); }
                 };
-                request.onsuccess = function(e) { db = e.target.result; resolve(); }; 
+                request.onsuccess = function(e) { db = e.target.result; resolve(); };
                 request.onerror = function(e) { reject(); };
             });
         }
-        
-        function loadProfilesFromDB() { 
-            return new Promise((resolve) => { 
-                let transaction = db.transaction([storeName], "readonly"); 
-                let store = transaction.objectStore(storeName); 
-                let request = store.getAll(); 
-                request.onsuccess = function() { customProfiles = request.result; resolve(); }; 
-            }); 
-        }
-        
-        function saveProfileToDB(profile) { 
-            return new Promise((resolve, reject) => { 
-                try { 
-                    let transaction = db.transaction([storeName], "readwrite"); 
-                    let store = transaction.objectStore(storeName); 
-                    store.put(profile); 
-                    transaction.oncomplete = function() { resolve(); }; 
-                } catch(e) { reject(e); } 
-            }); 
-        }
-        
-        function deleteProfileFromDB(id) { 
-            return new Promise((resolve, reject) => { 
-                try { 
-                    let transaction = db.transaction([storeName], "readwrite"); 
-                    let store = transaction.objectStore(storeName); 
-                    store.delete(id); 
-                    transaction.oncomplete = function() { resolve(); }; 
-                } catch(e) { reject(e); } 
-            }); 
-        }
-        
-        function clearDB() { 
-            playHapticBeep(); 
-            try { 
-                let transaction = db.transaction([storeName], "readwrite"); 
-                let store = transaction.objectStore(storeName); 
-                store.clear(); 
-                transaction.oncomplete = async function() { 
-                    customProfiles = []; 
-                    kirimPerintah('RESET', 'Memori lokal dan alat telah dihapus!'); 
-                    await initDirectory(); 
-                    document.getElementById("acBrand").value = "SAMSUNG"; 
-                    updateModelList(); 
-                }; 
-            } catch(e) { console.error(e); } 
-        }
 
-        // ================= DIREKTORI AC =================
-        function getDirektoriLengkap() { 
-            return { 
-                "KUSTOM TERSIMPAN": customProfiles, 
-                "+ TAMBAH KUSTOM BARU": [], 
-                "MIDEA / COOLIX": [ { id: "COOLIX", nama: "Coolix Standar" }, { id: "MIDEA", nama: "Midea Baru" } ], 
-                "SAMSUNG": [ { id: "SAMSUNG", nama: "Samsung Standar" }, { id: "SAMSUNG_AC", nama: "Samsung Inverter" } ], 
-                "LG": [ { id: "LG", nama: "LG Standar" } ], 
-                "DAIKIN": [ { id: "DAIKIN", nama: "Daikin Umum" } ], 
-                "PANASONIC": [ { id: "PANASONIC", nama: "Panasonic Umum" } ] 
-            }; 
-        }
-
-        let targetSuhu = 24; 
-        let isPowerOn = false;
-
-        async function initDirectory() {
-            await loadProfilesFromDB(); 
-            let brandSelect = document.getElementById("acBrand"); 
-            let prevBrand = brandSelect.value; 
-            brandSelect.innerHTML = ""; 
-            
-            let direktori = getDirektoriLengkap();
-            for (let brand in direktori) { 
-                let option = document.createElement("option"); 
-                option.value = brand; 
-                option.text = brand; 
-                brandSelect.add(option); 
-            }
-            
-            if(prevBrand && (direktori[prevBrand].length > 0 || prevBrand === "+ TAMBAH KUSTOM BARU")) { 
-                brandSelect.value = prevBrand; 
-            } else if (customProfiles.length > 0) { 
-                brandSelect.value = "KUSTOM TERSIMPAN"; 
-            } else { 
-                brandSelect.value = "SAMSUNG"; 
-            }
-            updateModelList(true); 
-        }
-
-        function updateModelList(isInitialLoad = false) {
-            let brand = document.getElementById("acBrand").value; 
-            let modelSelect = document.getElementById("acModel"); 
-            modelSelect.innerHTML = ""; 
-            let direktori = getDirektoriLengkap();
-            
-            if(direktori[brand] && direktori[brand].length > 0) { 
-                modelSelect.disabled = false; 
-                direktori[brand].forEach(model => { 
-                    let option = document.createElement("option"); 
-                    option.value = model.id; 
-                    option.text = model.nama; 
-                    modelSelect.add(option); 
-                }); 
-            } else { 
-                let option = document.createElement("option"); 
-                option.text = "---"; 
-                modelSelect.add(option); 
-                modelSelect.disabled = true; 
-            }
-            
-            togglePanelVisibility(brand, isInitialLoad); 
-            resetRemoteUI();
-        }
-
-        function togglePanelVisibility(brand, isInitialLoad) {
-            const pRemote = document.getElementById("panelRemote"); 
-            const pAdd = document.getElementById("panelAddCustom"); 
-            const badgeCustom = document.getElementById("customActiveBadge"); 
-            const boxLearn = document.getElementById("customLearnBox"); 
-            const boxStandard = document.getElementById("standardFeatureBox");
-            
-            if (isInitialLoad) { 
-                if (brand === "+ TAMBAH KUSTOM BARU") { 
-                    pAdd.classList.remove('hidden'); pAdd.classList.add('flex'); pRemote.classList.add('hidden'); 
-                } else { 
-                    pRemote.classList.remove('hidden'); pAdd.classList.add('hidden'); pAdd.classList.remove('flex'); 
-                } 
-            } else { 
-                if (brand === "+ TAMBAH KUSTOM BARU") { 
-                    pAdd.classList.add('flex'); animatePanelSwitch(pAdd, pRemote); 
-                } else { 
-                    animatePanelSwitch(pRemote, pAdd); setTimeout(() => pAdd.classList.remove('flex'), 300); 
-                } 
-            }
-            
-            if (brand === "KUSTOM TERSIMPAN") { 
-                badgeCustom.classList.remove('hidden'); badgeCustom.classList.add('flex'); 
-                boxLearn.classList.remove('hidden'); 
-                boxStandard.classList.add('hidden'); boxStandard.classList.remove('flex'); 
-                cancelTimer(); 
-            } else { 
-                badgeCustom.classList.add('hidden'); badgeCustom.classList.remove('flex'); 
-                boxLearn.classList.add('hidden'); 
-                boxStandard.classList.remove('hidden'); boxStandard.classList.add('flex'); 
-            }
-        }
-
-        async function simpanCustomBaru() { 
-            playHapticBeep(); 
-            let inputName = document.getElementById("customNameInput").value.trim(); 
-            
-            if(!inputName) { 
-                showToast("Masukkan nama profil dulu!", "error"); 
-                return; 
-            } 
-            
-            let newId = "CUSTOM_" + Date.now(); 
-            await saveProfileToDB({ id: newId, nama: inputName }); 
-            kirimPerintah('BELAJAR', 'Arahkan remot asli & tekan Power!'); 
-            
-            document.getElementById("customNameInput").value = ""; 
-            await initDirectory(); 
-            document.getElementById("acBrand").value = "KUSTOM TERSIMPAN"; 
-            updateModelList(); 
-            document.getElementById("acModel").value = newId; 
-        }
-        
-        async function hapusProfilKustomAktif() { 
-            playHapticBeep(); 
-            let modelSelect = document.getElementById("acModel"); 
-            
-            if (modelSelect.selectedIndex === -1) return; 
-            
-            let activeId = modelSelect.value; 
-            let activeName = modelSelect.options[modelSelect.selectedIndex].text; 
-            
-            if(confirm(`Yakin menghapus profil "${activeName}"?`)) { 
-                try { 
-                    await deleteProfileFromDB(activeId); 
-                    customProfiles = customProfiles.filter(p => p.id !== activeId); 
-                    showToast(`Profil dihapus!`, "success"); 
-                    await initDirectory(); 
-                    document.getElementById("acBrand").value = customProfiles.length === 0 ? "SAMSUNG" : "KUSTOM TERSIMPAN"; 
-                    updateModelList(); 
-                } catch (err) { 
-                    showToast("Gagal menghapus!", "error"); 
-                } 
-            } 
-        }
-
-        function hapusDatabaseKustom() { 
-            playHapticBeep(); 
-            if(confirm("AWAS: Menghapus SELURUH profil kustom & memori alat. Lanjutkan?")) { 
-                clearDB(); 
-            } 
-        }
-
-        // ================= INTERAKSI REMOTE =================
-        function resetRemoteUI() { 
-            targetSuhu = 24; 
-            document.getElementById("remoteTempDisplay").innerText = targetSuhu; 
-        }
-        
-        function togglePower() {
-            playHapticBeep(); 
-            isPowerOn = !isPowerOn;
-            
-            let btnPower = document.getElementById("btnPower"); 
-            let iconPower = document.getElementById("iconPower"); 
-            let overlay = document.getElementById("remoteOffOverlay"); 
-            let lcdTopRow = document.getElementById("lcdTopRow"); 
-            let lcdTemp = document.getElementById("remoteTempDisplay"); 
-            let modelId = document.getElementById("acModel").value; 
-            let brandId = document.getElementById("acBrand").value; 
-            let commandSuffix = (brandId === "KUSTOM TERSIMPAN") ? "CUSTOM_ON" : modelId;
-            
-            if (isPowerOn) {
-                btnPower.classList.add("bg-white", "shadow-[0_0_20px_rgba(255,255,255,0.15)]"); 
-                btnPower.classList.remove("bg-danger", "border-transparent", "shadow-none"); 
-                iconPower.classList.add("stroke-bgBase"); 
-                iconPower.classList.remove("stroke-white"); 
-                overlay.classList.remove("opacity-100"); 
-                overlay.classList.add("opacity-0"); 
-                overlay.style.pointerEvents = 'none';
-                
-                lcdTemp.classList.add("lcd-glow"); 
-                lcdTopRow.classList.add("lcd-glow"); 
-                triggerPopAnimation('remoteTempDisplay'); 
-                
-                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_ON" : ("AC_ON_" + commandSuffix), "Menyalakan Sistem");
-            } else {
-                btnPower.classList.remove("bg-white", "shadow-[0_0_20px_rgba(255,255,255,0.15)]"); 
-                btnPower.classList.add("bg-danger", "border-transparent", "shadow-none"); 
-                iconPower.classList.remove("stroke-bgBase"); 
-                iconPower.classList.add("stroke-white"); 
-                overlay.classList.remove("opacity-0"); 
-                overlay.classList.add("opacity-100"); 
-                overlay.style.pointerEvents = 'auto';
-                
-                lcdTemp.classList.remove("lcd-glow"); 
-                lcdTopRow.classList.remove("lcd-glow"); 
-                
-                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_OFF" : ("AC_OFF_" + commandSuffix), "Mematikan Sistem"); 
-                cancelTimer(); 
-            }
-        }
-        
-        function ubahSuhu(delta) { 
-            playHapticBeep(); 
-            if (!isPowerOn) return; 
-            
-            let suhuBaru = targetSuhu + delta; 
-            
-            if (suhuBaru >= 16 && suhuBaru <= 30) { 
-                targetSuhu = suhuBaru; 
-                document.getElementById("remoteTempDisplay").innerText = targetSuhu; 
-                triggerPopAnimation('remoteTempDisplay'); 
-                
-                let modelId = document.getElementById("acModel").value; 
-                let brandId = document.getElementById("acBrand").value; 
-                let commandStr = (brandId === "KUSTOM TERSIMPAN") ? ("AC_SET_" + modelId + "_TEMP_" + targetSuhu) : ("AC_SET_" + modelId + "_TEMP_" + targetSuhu); 
-                
-                kirimPerintah(commandStr, "Suhu " + targetSuhu + "°C"); 
-            } 
-        }
-        
-        function setUIState(isEnabled) { 
-            document.querySelectorAll('.ac-control').forEach(ctrl => { 
-                ctrl.disabled = !isEnabled; 
-            }); 
-        }
-
-        // ================= MQTT & WEBSOCKET SETUP =================
-        const broker = "broker.emqx.io"; 
-        const port = 8084; 
-        const topicSuhu = "itsig/ruangan/suhu"; 
-        const topicKelembapan = "itsig/ruangan/kelembapan"; 
-        const topicPerintah = "itsig/ac/perintah";
-        
-        const client = new Paho.MQTT.Client(broker, port, "WebITSIG_" + Math.random().toString(16).substr(2, 8));
-
-        client.onConnectionLost = function(responseObject) { 
-            if (responseObject.errorCode !== 0) { 
-                setUIState(false); 
-                updateStatus("TERPUTUS", "bg-danger", "text-danger", "animate-pulse"); 
-                
-                const panels = document.getElementById("controlPanels"); 
-                panels.classList.add("opacity-0"); 
-                
-                setTimeout(() => { 
-                    panels.classList.add("hidden"); 
-                    document.getElementById("controlPlaceholder").classList.remove("hidden"); 
-                    document.getElementById("controlPlaceholder").classList.remove("opacity-0"); 
-                }, 300); 
-                
-                setTimeout(connectMQTT, 3000); 
-            } 
-        };
-
-        client.onMessageArrived = function(message) {
-            let timeString = new Date().toLocaleTimeString('id-ID', { hour12: false }); 
-            document.getElementById("lastUpdated").innerText = "Diperbarui: " + timeString;
-            
-            if (message.destinationName === topicSuhu) {
-                let suhu = parseFloat(message.payloadString);
-                
-                // Cek Peringatan Suhu
-                cekPeringatanSuhu(suhu);
-
-                let elSuhu = document.getElementById("suhuValue"); 
-                let elSatuan = document.getElementById("suhuSatuan"); 
-                elSuhu.innerText = suhu; 
-                
-                let colorHex = '#f4f4f5'; 
-                let gradientHex = 'rgba(244, 244, 245, 0.25)';
-                
-                if(suhu >= 30.0) { 
-                    elSuhu.className = "text-5xl font-bold text-danger tracking-tighter transition-colors duration-500"; 
-                    elSatuan.className = "text-lg text-danger/80 font-bold mt-1.5 ml-1 transition-colors duration-500"; 
-                    colorHex = '#f87171'; 
-                    gradientHex = 'rgba(248, 113, 113, 0.3)'; 
-                } else if (suhu <= 22.0) { 
-                    elSuhu.className = "text-5xl font-light text-accent tracking-tighter transition-colors duration-500"; 
-                    elSatuan.className = "text-lg text-accent/80 font-light mt-1.5 ml-1 transition-colors duration-500"; 
-                    colorHex = '#38bdf8'; 
-                    gradientHex = 'rgba(56, 189, 248, 0.3)'; 
-                } else { 
-                    elSuhu.className = "text-5xl font-light text-white tracking-tighter transition-colors duration-500"; 
-                    elSatuan.className = "text-lg text-zinc-400 font-light mt-1.5 ml-1 transition-colors duration-500"; 
-                }
-                
-                if(tempChart) { 
-                    if (chartData.length >= maxChartPoints) { 
-                        chartData.shift(); 
-                        chartLabels.shift(); 
-                    } 
-                    chartData.push(suhu); 
-                    chartLabels.push(timeString); 
-                    tempChart.data.datasets[0].borderColor = colorHex; 
-                    
-                    const ctx = document.getElementById('tempChart').getContext('2d'); 
-                    let newGradient = ctx.createLinearGradient(0, 0, 0, 80); 
-                    newGradient.addColorStop(0, gradientHex); 
-                    newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); 
-                    
-                    tempChart.data.datasets[0].backgroundColor = newGradient; 
-                    tempChart.update(); 
-                }
-            } 
-            else if (message.destinationName === topicKelembapan) {
-                let humid = parseFloat(message.payloadString); 
-                let elHumid = document.getElementById("humidValue"); 
-                let elHumidSatuan = document.getElementById("humidSatuan"); 
-                elHumid.innerText = humid;
-                
-                if(humid > 65.0) { 
-                    elHumid.className = "text-3xl font-light text-accent tracking-tighter transition-colors duration-500"; 
-                    elHumidSatuan.className = "text-sm text-accent/80 font-light mt-1 ml-1 transition-colors duration-500"; 
-                } else if (humid < 30.0) { 
-                    elHumid.className = "text-3xl font-light text-warning tracking-tighter transition-colors duration-500"; 
-                    elHumidSatuan.className = "text-sm text-warning/80 font-light mt-1 ml-1 transition-colors duration-500"; 
-                } else { 
-                    elHumid.className = "text-3xl font-light text-white tracking-tighter transition-colors duration-500"; 
-                    elHumidSatuan.className = "text-sm text-zinc-400 font-light mt-1 ml-1 transition-colors duration-500"; 
-                }
-            }
-        }
-
-        function connectMQTT() {
-            setUIState(false); 
-            updateStatus("MENGHUBUNGKAN...", "bg-warning", "text-warning", "animate-pulse"); 
-            
-            const panels = document.getElementById("controlPanels"); 
-            panels.classList.add("opacity-0"); 
-            
-            setTimeout(() => { 
-                panels.classList.add("hidden"); 
-                document.getElementById("controlPlaceholder").classList.remove("hidden"); 
-                document.getElementById("controlPlaceholder").classList.remove("opacity-0"); 
-            }, 300);
-            
-            client.connect({
-                useSSL: true, 
-                onSuccess: function() {
-                    updateStatus("ONLINE", "bg-success", "text-success", "animate-none"); 
-                    client.subscribe(topicSuhu); 
-                    client.subscribe(topicKelembapan); 
-                    
-                    document.getElementById("controlPlaceholder").classList.add("opacity-0"); 
-                    setTimeout(() => { 
-                        document.getElementById("controlPlaceholder").classList.add("hidden"); 
-                        const panels = document.getElementById("controlPanels"); 
-                        panels.classList.remove("hidden"); 
-                        void panels.offsetWidth; 
-                        panels.classList.remove("opacity-0"); 
-                    }, 300);
-                    
-                    isPowerOn = true; 
-                    document.getElementById("remoteOffOverlay").classList.add("opacity-0"); 
-                    document.getElementById("remoteOffOverlay").style.pointerEvents = 'none'; 
-                    document.getElementById("remoteTempDisplay").classList.add("lcd-glow"); 
-                    document.getElementById("lcdTopRow").classList.add("lcd-glow"); 
-                    
-                    setUIState(true); 
-                },
-                onFailure: function() { 
-                    setUIState(false); 
-                    updateStatus("GAGAL KONEK", "bg-danger", "text-danger", "animate-none"); 
-                    setTimeout(connectMQTT, 5000); 
-                }
+        function loadProfilesFromDB() {
+            return new Promise((resolve) => {
+                let transaction = db.transaction([storeName], "readonly");
+                let store = transaction.objectStore(storeName);
+                let request = store.getAll();
+                request.onsuccess = function() { customProfiles = request.result; resolve(); };
             });
         }
 
-        function kirimPerintah(perintah, pesanToast) { 
-            playHapticBeep(); 
-            if (!client.isConnected()) { 
-                showToast("Koneksi terputus!", "error"); 
-                return; 
-            } 
-            
-            let message = new Paho.MQTT.Message(perintah); 
-            message.destinationName = topicPerintah; 
-            client.send(message); 
-            
-            showToast(pesanToast, "success"); 
-        }
-        
-        function konfirmasiResetWifi() { 
-            playHapticBeep(); 
-            if(confirm("Memutus Wi-Fi akan me-restart alat. Lanjutkan?")) { 
-                kirimPerintah('RESET_WIFI', 'Alat di-restart.'); 
-            } 
-        }
-        
-        function updateStatus(text, dotColor, textColor, animationClass) { 
-            document.getElementById("connText").innerText = text; 
-            document.getElementById("connText").className = textColor; 
-            document.getElementById("connDot").className = `w-1.5 h-1.5 rounded-full mr-2 ${dotColor} ${animationClass}`; 
-            
-            let box = document.getElementById("connStatus"); 
-            if(text === "ONLINE") { 
-                box.className = "flex items-center text-[10px] tracking-wider font-semibold bg-success/10 text-success px-3 py-1.5 rounded-full border border-success/20 transition-all duration-300"; 
-            } else if (text === "MENGHUBUNGKAN...") { 
-                box.className = "flex items-center text-[10px] tracking-wider font-semibold bg-warning/10 text-warning px-3 py-1.5 rounded-full border border-warning/20 transition-all duration-300"; 
-            } else { 
-                box.className = "flex items-center text-[10px] tracking-wider font-semibold bg-danger/10 text-danger px-3 py-1.5 rounded-full border border-danger/20 transition-all duration-300"; 
-            } 
+        function saveProfileToDB(profile) {
+            return new Promise((resolve, reject) => {
+                try {
+                    let transaction = db.transaction([storeName], "readwrite");
+                    let store = transaction.objectStore(storeName);
+                    store.put(profile);
+                    transaction.oncomplete = function() { resolve(); };
+                    transaction.onerror = function(e) { reject(e); };
+                } catch(e) { reject(e); }
+            });
         }
 
-        let toastTimeout; 
-        function showToast(msg, type) { 
-            let toast = document.getElementById("toastBox"); 
-            let iconBox = document.getElementById("toastIconBox"); 
-            document.getElementById("toastMsg").innerText = msg; 
-            
-            iconBox.className = type === "error" ? "w-2.5 h-2.5 rounded-full bg-danger mr-3" : "w-2.5 h-2.5 rounded-full bg-success mr-3"; 
-            
-            toast.classList.remove("toast-show"); 
-            void toast.offsetWidth; 
-            toast.classList.add("toast-show"); 
-            
-            clearTimeout(toastTimeout); 
-            toastTimeout = setTimeout(() => { toast.classList.remove("toast-show"); }, 3000); 
+        function deleteProfileFromDB(id) {
+            return new Promise((resolve, reject) => {
+                try {
+                    let transaction = db.transaction([storeName], "readwrite");
+                    let store = transaction.objectStore(storeName);
+                    store.delete(id);
+                    transaction.oncomplete = function() { resolve(); };
+                    transaction.onerror = function(e) { reject(e); };
+                } catch(e) { reject(e); }
+            });
         }
 
-        // ================= ALUR STARTUP UTAMA =================
+        function clearDB() {
+            try {
+                let transaction = db.transaction([storeName], "readwrite");
+                let store = transaction.objectStore(storeName);
+                store.clear();
+                transaction.oncomplete = async function() {
+                    customProfiles = [];
+                    kirimPerintah('RESET', 'Memori lokal dan alat telah dihapus!');
+                    await initDirectory();
+                    document.getElementById("acBrand").value = "SAMSUNG"; updateModelList();
+                };
+            } catch(e) { console.error(e); }
+        }
+
+        function getDirektoriLengkap() {
+            return {
+                "KUSTOM TERSIMPAN": customProfiles, "+ TAMBAH KUSTOM BARU": [], 
+                "MIDEA / COOLIX": [ { id: "COOLIX", nama: "Coolix Standar" }, { id: "MIDEA", nama: "Midea Baru" } ],
+                "SAMSUNG": [ { id: "SAMSUNG", nama: "Samsung Standar" }, { id: "SAMSUNG_AC", nama: "Samsung Inverter" } ],
+                "LG": [ { id: "LG", nama: "LG Standar" } ], "DAIKIN": [ { id: "DAIKIN", nama: "Daikin Umum" } ], "PANASONIC": [ { id: "PANASONIC", nama: "Panasonic Umum" } ]
+            };
+        }
+
+        let targetSuhu = 24;
+        let isPowerOn = false;
+
+        async function initDirectory() {
+            await loadProfilesFromDB();
+            let brandSelect = document.getElementById("acBrand"); let prevBrand = brandSelect.value; brandSelect.innerHTML = ""; 
+            let direktori = getDirektoriLengkap();
+            for (let brand in direktori) { let option = document.createElement("option"); option.value = brand; option.text = brand; brandSelect.add(option); }
+            if(prevBrand && (direktori[prevBrand].length > 0 || prevBrand === "+ TAMBAH KUSTOM BARU")) { brandSelect.value = prevBrand; } 
+            else if (customProfiles.length > 0) { brandSelect.value = "KUSTOM TERSIMPAN"; } 
+            else { brandSelect.value = "SAMSUNG"; }
+            updateModelList(); 
+        }
+
+        function updateModelList() {
+            let brand = document.getElementById("acBrand").value; let modelSelect = document.getElementById("acModel"); modelSelect.innerHTML = ""; 
+            let direktori = getDirektoriLengkap();
+            if(direktori[brand] && direktori[brand].length > 0) {
+                modelSelect.disabled = false;
+                direktori[brand].forEach(model => { let option = document.createElement("option"); option.value = model.id; option.text = model.nama; modelSelect.add(option); });
+            } else {
+                let option = document.createElement("option"); option.text = "---"; modelSelect.add(option); modelSelect.disabled = true;
+            }
+            togglePanelVisibility(brand); resetRemoteUI();
+        }
+
+        function togglePanelVisibility(brand) {
+            const pRemote = document.getElementById("panelRemote"); const pAdd = document.getElementById("panelAddCustom");
+            const badgeCustom = document.getElementById("customActiveBadge"); const boxLearn = document.getElementById("customLearnBox");
+            pRemote.classList.add('hidden'); pAdd.classList.add('hidden'); pAdd.classList.remove('flex');
+
+            if (brand === "+ TAMBAH KUSTOM BARU") { pAdd.classList.remove('hidden'); pAdd.classList.add('flex'); } 
+            else {
+                pRemote.classList.remove('hidden');
+                if (brand === "KUSTOM TERSIMPAN") { badgeCustom.classList.remove('hidden'); badgeCustom.classList.add('flex'); boxLearn.classList.remove('hidden'); } 
+                else { badgeCustom.classList.add('hidden'); badgeCustom.classList.remove('flex'); boxLearn.classList.add('hidden'); }
+            }
+        }
+
+        async function simpanCustomBaru() {
+            let inputName = document.getElementById("customNameInput").value.trim();
+            if(!inputName) { showToast("Masukkan nama profil dulu!", "error"); return; }
+            let newId = "CUSTOM_" + Date.now();
+            await saveProfileToDB({ id: newId, nama: inputName });
+            kirimPerintah('BELAJAR', 'Arahkan remot asli & tekan tombol Power!');
+            document.getElementById("customNameInput").value = "";
+            await initDirectory(); 
+            document.getElementById("acBrand").value = "KUSTOM TERSIMPAN"; updateModelList(); document.getElementById("acModel").value = newId;
+        }
+
+        async function hapusProfilKustomAktif() {
+            let modelSelect = document.getElementById("acModel");
+            if (modelSelect.selectedIndex === -1) return; 
+            let activeId = modelSelect.value; let activeName = modelSelect.options[modelSelect.selectedIndex].text;
+            if(confirm(`Yakin ingin menghapus profil "${activeName}" dari memori?`)) {
+                try {
+                    await deleteProfileFromDB(activeId); customProfiles = customProfiles.filter(p => p.id !== activeId);
+                    showToast(`Profil ${activeName} berhasil dihapus!`, "success"); await initDirectory();
+                    let brandSelect = document.getElementById("acBrand");
+                    if(customProfiles.length === 0) { brandSelect.value = "SAMSUNG"; } else { brandSelect.value = "KUSTOM TERSIMPAN"; }
+                    updateModelList();
+                } catch (err) { console.error("Gagal menghapus profil:", err); showToast("Gagal menghapus profil!", "error"); }
+            }
+        }
+
+        function hapusDatabaseKustom() { if(confirm("AWAS: Format sistem akan menghapus SELURUH profil kustom dan memori alat di atap. Lanjutkan?")) { clearDB(); } }
+
+        function resetRemoteUI() { targetSuhu = 24; document.getElementById("remoteTempDisplay").innerText = targetSuhu; }
+
+        function togglePower() {
+            playHapticBeep();
+            isPowerOn = !isPowerOn;
+            let btnPower = document.getElementById("btnPower"); let overlay = document.getElementById("remoteOffOverlay");
+            let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
+            let commandSuffix = (brandId === "KUSTOM TERSIMPAN") ? "CUSTOM_ON" : modelId;
+
+            if (isPowerOn) {
+                btnPower.classList.add("bg-white"); btnPower.classList.remove("bg-danger", "border-transparent");
+                btnPower.innerHTML = '<svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+                overlay.classList.add("hidden");
+                triggerPopAnimation('remoteTempDisplay');
+                
+                let namaAc = document.getElementById("acModel").options[document.getElementById("acModel").selectedIndex]?.text || "AC";
+                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_ON" : ("AC_ON_" + commandSuffix), "Menyalakan AC");
+                addLog(`Menyalakan ${namaAc}`); // Tambahkan Log
+            } else {
+                btnPower.classList.remove("bg-white"); btnPower.classList.add("bg-danger", "border-transparent");
+                btnPower.innerHTML = '<svg class="w-6 h-6 stroke-white stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+                overlay.classList.remove("hidden");
+                
+                let namaAc = document.getElementById("acModel").options[document.getElementById("acModel").selectedIndex]?.text || "AC";
+                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_OFF" : ("AC_OFF_" + commandSuffix), "Mematikan AC");
+                addLog(`Mematikan ${namaAc}`); // Tambahkan Log
+            }
+        }
+
+        function ubahSuhu(delta) {
+            playHapticBeep();
+            if (!isPowerOn) return; 
+            let suhuBaru = targetSuhu + delta;
+            if (suhuBaru >= 16 && suhuBaru <= 30) {
+                targetSuhu = suhuBaru; document.getElementById("remoteTempDisplay").innerText = targetSuhu;
+                triggerPopAnimation('remoteTempDisplay');
+                let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
+                let commandStr = (brandId === "KUSTOM TERSIMPAN") ? ("AC_SET_" + modelId + "_TEMP_" + targetSuhu) : ("AC_SET_" + modelId + "_TEMP_" + targetSuhu);
+                kirimPerintah(commandStr, "Suhu " + targetSuhu + "°C");
+                addLog(`Ubah Suhu ke ${targetSuhu}°C`); // Tambahkan Log
+            }
+        }
+
+        function setUIState(isEnabled) { let controls = document.querySelectorAll('.ac-control'); controls.forEach(ctrl => { ctrl.disabled = !isEnabled; }); }
+
+        function triggerPopAnimation(elementId) {
+            const el = document.getElementById(elementId); el.classList.remove('anim-pop');
+            void el.offsetWidth; el.classList.add('anim-pop');
+        }
+
+        // ================= PENGATURAN MQTT =================
+        const broker = "broker.emqx.io";
+        const port = 8084; 
+        
+        const topicSuhu = "itsig/ruangan/suhu";
+        const topicKelembapan = "itsig/ruangan/kelembapan";
+        const topicPerintah = "itsig/ac/perintah";
+        
+        const clientId = "WebITSIG_" + Math.random().toString(16).substr(2, 8);
+        const client = new Paho.MQTT.Client(broker, port, clientId);
+
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+
+        function connectMQTT() {
+            setUIState(false); 
+            updateStatus("MENGHUBUNGKAN...", "bg-warning", "text-warning", "animate-pulse");
+            
+            document.getElementById("controlPlaceholder").classList.remove("hidden");
+            document.getElementById("controlPanels").classList.add("hidden");
+            document.getElementById("panelActivityLog").classList.add("hidden");
+
+            // Timer Bypass Canvas: Paksa masuk Demo Mode jika koneksi tertahan 2.5 detik
+            connectionTimeout = setTimeout(() => {
+                if (!client.isConnected() && !isDemoMode) {
+                    console.log("Koneksi diblokir oleh lingkungan, masuk mode Demo.");
+                    startDemoMode();
+                }
+            }, 2500);
+
+            // Penanganan jika lingkungan Canvas memblokir koneksi WebSocket
+            try {
+                client.connect({
+                    useSSL: true, 
+                    timeout: 3,
+                    onSuccess: function() {
+                        clearTimeout(connectionTimeout);
+                        onConnect();
+                    },
+                    onFailure: function(err) {
+                        clearTimeout(connectionTimeout);
+                        console.log("MQTT gagal konek, beralih ke Mode Simulasi (Demo).", err);
+                        startDemoMode();
+                    }
+                });
+            } catch (error) {
+                clearTimeout(connectionTimeout);
+                console.log("Koneksi diblokir oleh sistem Canvas, beralih ke Mode Simulasi (Demo).", error);
+                startDemoMode();
+            }
+        }
+
+        // FUNGSI KHUSUS SIMULASI UNTUK CANVAS
+        function startDemoMode() {
+            if (isDemoMode) return;
+            isDemoMode = true;
+            updateStatus("DEMO MODE", "bg-accent", "text-accent", "animate-pulse");
+            
+            document.getElementById("controlPlaceholder").classList.add("hidden");
+            document.getElementById("controlPanels").classList.remove("hidden");
+            document.getElementById("panelActivityLog").classList.remove("hidden");
+            
+            isPowerOn = true;
+            document.getElementById("remoteOffOverlay").classList.add("hidden");
+            setUIState(true); 
+            addLog("Sistem Demo Dimulai");
+
+            // Kirim data simulasi pertama langsung
+            generateDemoData();
+            // Mulai interval simulasi agar chart bergerak
+            demoInterval = setInterval(generateDemoData, 3000);
+        }
+
+        function generateDemoData() {
+            // Suhu simulasi antara 23.0 - 27.0
+            let mockTemp = (23 + Math.random() * 4).toFixed(1);
+            // Kelembapan simulasi antara 45.0 - 65.0
+            let mockHumid = (45 + Math.random() * 20).toFixed(1);
+
+            let msgTemp = new Paho.MQTT.Message(mockTemp.toString());
+            msgTemp.destinationName = topicSuhu;
+            onMessageArrived(msgTemp);
+
+            let msgHumid = new Paho.MQTT.Message(mockHumid.toString());
+            msgHumid.destinationName = topicKelembapan;
+            onMessageArrived(msgHumid);
+        }
+
+        function onConnect() {
+            updateStatus("ONLINE", "bg-success", "text-success", "animate-none");
+            client.subscribe(topicSuhu);
+            client.subscribe(topicKelembapan);
+            
+            document.getElementById("controlPlaceholder").classList.add("hidden");
+            document.getElementById("controlPanels").classList.remove("hidden");
+            document.getElementById("panelActivityLog").classList.remove("hidden");
+            
+            isPowerOn = true;
+            document.getElementById("remoteOffOverlay").classList.add("hidden");
+            setUIState(true); 
+            addLog("Terhubung ke MQTT");
+        }
+
+        function onConnectionLost(responseObject) {
+            if (isDemoMode) return; // Skip di mode simulasi
+            if (responseObject.errorCode !== 0) {
+                setUIState(false);
+                updateStatus("TERPUTUS", "bg-danger", "text-danger", "animate-pulse");
+                document.getElementById("controlPlaceholder").classList.remove("hidden");
+                document.getElementById("controlPanels").classList.add("hidden");
+                document.getElementById("panelActivityLog").classList.add("hidden");
+                setTimeout(connectMQTT, 3000);
+            }
+        }
+
+        function onMessageArrived(message) {
+            let now = new Date();
+            let timeString = now.toLocaleTimeString('id-ID', { hour12: false });
+            document.getElementById("lastUpdated").innerText = "Diperbarui: " + timeString;
+
+            if (message.destinationName === topicSuhu) {
+                let suhu = parseFloat(message.payloadString);
+                let elSuhu = document.getElementById("suhuValue");
+                let elSatuan = document.getElementById("suhuSatuan");
+                elSuhu.innerText = suhu;
+
+                let colorHex = '#f4f4f5'; 
+                let gradientHex = 'rgba(244, 244, 245, 0.3)';
+
+                if(suhu >= 28.0) {
+                    elSuhu.className = "text-5xl font-light text-danger tracking-tighter transition-colors duration-500";
+                    elSatuan.className = "text-lg text-danger/80 font-light mt-1.5 ml-1 transition-colors duration-500";
+                    colorHex = '#f87171';
+                    gradientHex = 'rgba(248, 113, 113, 0.3)';
+                } else if (suhu <= 22.0) {
+                    elSuhu.className = "text-5xl font-light text-accent tracking-tighter transition-colors duration-500";
+                    elSatuan.className = "text-lg text-accent/80 font-light mt-1.5 ml-1 transition-colors duration-500";
+                    colorHex = '#38bdf8';
+                    gradientHex = 'rgba(56, 189, 248, 0.3)';
+                } else {
+                    elSuhu.className = "text-5xl font-light text-white tracking-tighter transition-colors duration-500";
+                    elSatuan.className = "text-lg text-zinc-400 font-light mt-1.5 ml-1 transition-colors duration-500";
+                }
+
+                if(tempChart) {
+                    if (chartData.length >= maxChartPoints) {
+                        chartData.shift(); chartLabels.shift();
+                    }
+                    chartData.push(suhu); chartLabels.push(timeString);
+                    tempChart.data.datasets[0].borderColor = colorHex;
+                    
+                    const ctx = document.getElementById('tempChart').getContext('2d');
+                    let newGradient = ctx.createLinearGradient(0, 0, 0, 80);
+                    newGradient.addColorStop(0, gradientHex); newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    tempChart.data.datasets[0].backgroundColor = newGradient;
+                    tempChart.update();
+                }
+            } 
+            else if (message.destinationName === topicKelembapan) {
+                let humid = parseFloat(message.payloadString);
+                let elHumid = document.getElementById("humidValue");
+                let elHumidSatuan = document.getElementById("humidSatuan");
+                elHumid.innerText = humid;
+
+                if(humid > 65.0) {
+                    elHumid.className = "text-3xl font-light text-accent tracking-tighter transition-colors duration-500";
+                    elHumidSatuan.className = "text-sm text-accent/80 font-light mt-1 ml-1 transition-colors duration-500";
+                } else if (humid < 30.0) { 
+                    elHumid.className = "text-3xl font-light text-warning tracking-tighter transition-colors duration-500";
+                    elHumidSatuan.className = "text-sm text-warning/80 font-light mt-1 ml-1 transition-colors duration-500";
+                } else {
+                    elHumid.className = "text-3xl font-light text-white tracking-tighter transition-colors duration-500";
+                    elHumidSatuan.className = "text-sm text-zinc-400 font-light mt-1 ml-1 transition-colors duration-500";
+                }
+            }
+        }
+
+        function kirimPerintah(perintah, pesanToast) {
+            if (isDemoMode) {
+                showToast(pesanToast + " (Simulasi)", "success"); 
+                return;
+            }
+            if (!client.isConnected()) {
+                showToast("Koneksi terputus!", "error"); return;
+            }
+            let message = new Paho.MQTT.Message(perintah);
+            message.destinationName = topicPerintah;
+            client.send(message);
+            showToast(pesanToast, "success");
+        }
+
+        function konfirmasiResetWifi() {
+            if(confirm("Memutus Wi-Fi akan me-restart alat. Lanjutkan?")) {
+                kirimPerintah('RESET_WIFI', 'Alat di-restart.');
+            }
+        }
+
+        function updateStatus(text, dotColor, textColor, animationClass) {
+            document.getElementById("connText").innerText = text;
+            document.getElementById("connText").className = textColor;
+            let dot = document.getElementById("connDot");
+            dot.className = `w-1.5 h-1.5 rounded-full mr-2 ${dotColor} ${animationClass}`;
+        }
+
+        let toastTimeout;
+        function showToast(msg, type) {
+            let toast = document.getElementById("toastBox");
+            let iconBox = document.getElementById("toastIconBox");
+            document.getElementById("toastMsg").innerText = msg;
+            iconBox.className = type === "error" ? "w-2.5 h-2.5 rounded-full bg-danger mr-3" : "w-2.5 h-2.5 rounded-full bg-success mr-3";
+            toast.classList.add("toast-show");
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => { toast.classList.remove("toast-show"); }, 3000);
+        }
+
+        // ================= STRATUP SEQUENCE =================
         window.onload = async () => {
-            // Minta Izin Notifikasi Bawaan HP/Browser untuk peringatan suhu
-            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-                Notification.requestPermission();
-            }
-            mulaiSistemUtama();
-        };
-
-        async function mulaiSistemUtama() {
+            // Mainkan Animasi Entry
+            playIntroAnimation();
+            
             initChart(); 
-            initStaggerAnimation(); 
-            try { 
-                await initDatabase(); 
+            try {
+                await initDatabase();
                 await initDirectory(); 
-                connectMQTT(); 
-            } catch (err) { 
-                console.error("Gagal memulai sistem: ", err); 
+                connectMQTT();   
+            } catch (err) {
+                console.error("Gagal memulai sistem: ", err);
             }
-        }
+        };
     </script>
 </body>
 </html>
