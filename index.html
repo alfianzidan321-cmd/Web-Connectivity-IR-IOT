@@ -595,11 +595,17 @@
 
         function hapusDatabaseKustom() { if(confirm("AWAS: Format sistem akan menghapus SELURUH profil kustom dan memori alat di atap. Lanjutkan?")) { clearDB(); } }
 
-        function resetRemoteUI() { targetSuhu = 24; document.getElementById("remoteTempDisplay").innerText = targetSuhu; }
+        function resetRemoteUI() { 
+            let savedSuhu = localStorage.getItem("itsig_suhu");
+            // Jika ada memori, pakai itu. Jika tidak ada, pakai 24.
+            targetSuhu = savedSuhu ? parseInt(savedSuhu) : 24; 
+            document.getElementById("remoteTempDisplay").innerText = targetSuhu; 
+        }
 
         function togglePower() {
             playHapticBeep();
             isPowerOn = !isPowerOn;
+            localStorage.setItem("itsig_power", isPowerOn);
             let btnPower = document.getElementById("btnPower"); let overlay = document.getElementById("remoteOffOverlay");
             let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
             let commandSuffix = (brandId === "KUSTOM TERSIMPAN") ? "CUSTOM_ON" : modelId;
@@ -630,6 +636,7 @@
             let suhuBaru = targetSuhu + delta;
             if (suhuBaru >= 16 && suhuBaru <= 30) {
                 targetSuhu = suhuBaru; document.getElementById("remoteTempDisplay").innerText = targetSuhu;
+                localStorage.setItem("itsig_suhu", targetSuhu);
                 triggerPopAnimation('remoteTempDisplay');
                 let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
                 let commandStr = (brandId === "KUSTOM TERSIMPAN") ? ("AC_SET_" + modelId + "_TEMP_" + targetSuhu) : ("AC_SET_" + modelId + "_TEMP_" + targetSuhu);
@@ -865,10 +872,21 @@
             try {
                 await initDatabase();
                 await initDirectory(); 
+                
+                // --- BLOK PEMULIHAN INGATAN POWER ---
+                let savedPower = localStorage.getItem("itsig_power");
+                if (savedPower === "true") {
+                    isPowerOn = true;
+                    let btnPower = document.getElementById("btnPower"); 
+                    let overlay = document.getElementById("remoteOffOverlay");
+                    btnPower.classList.add("bg-white"); btnPower.classList.remove("bg-danger", "border-transparent");
+                    btnPower.innerHTML = '<svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+                    overlay.classList.add("hidden");
+                }
+                // ------------------------------------
+
                 connectMQTT();   
             } catch (err) {
-                console.error("Gagal memulai sistem: ", err);
-            }
         };
     </script>
 </body>
