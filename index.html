@@ -533,25 +533,68 @@
 
         async function initDirectory() {
             await loadProfilesFromDB();
-            let brandSelect = document.getElementById("acBrand"); let prevBrand = brandSelect.value; brandSelect.innerHTML = ""; 
+            let brandSelect = document.getElementById("acBrand"); 
+            brandSelect.innerHTML = ""; 
             let direktori = getDirektoriLengkap();
-            for (let brand in direktori) { let option = document.createElement("option"); option.value = brand; option.text = brand; brandSelect.add(option); }
-            if(prevBrand && (direktori[prevBrand].length > 0 || prevBrand === "+ TAMBAH KUSTOM BARU")) { brandSelect.value = prevBrand; } 
-            else if (customProfiles.length > 0) { brandSelect.value = "KUSTOM TERSIMPAN"; } 
-            else { brandSelect.value = "SAMSUNG"; }
+            
+            // Susun opsi merek
+            for (let brand in direktori) { 
+                let option = document.createElement("option"); 
+                option.value = brand; option.text = brand; 
+                brandSelect.add(option); 
+            }
+            
+            // --- BACA INGATAN MEREK DARI MEMORI ---
+            let savedBrand = localStorage.getItem("itsig_brand");
+            if (savedBrand && (direktori[savedBrand] || savedBrand === "KUSTOM TERSIMPAN")) { 
+                brandSelect.value = savedBrand; 
+            } else if (customProfiles.length > 0) { 
+                brandSelect.value = "KUSTOM TERSIMPAN"; 
+            } else { 
+                brandSelect.value = "SAMSUNG"; 
+            }
+            
             updateModelList(); 
+            
+            // --- BACA INGATAN MODEL DARI MEMORI ---
+            let savedModel = localStorage.getItem("itsig_model");
+            let modelSelect = document.getElementById("acModel");
+            // Pastikan model yang tersimpan memang ada di dalam list merek yang dipilih
+            if (savedModel && Array.from(modelSelect.options).some(opt => opt.value === savedModel)) {
+                modelSelect.value = savedModel;
+            }
         }
 
         function updateModelList() {
-            let brand = document.getElementById("acBrand").value; let modelSelect = document.getElementById("acModel"); modelSelect.innerHTML = ""; 
+            let brand = document.getElementById("acBrand").value; 
+            
+            // --- REKAM PILIHAN MEREK KE MEMORI ---
+            localStorage.setItem("itsig_brand", brand); 
+            
+            let modelSelect = document.getElementById("acModel"); 
+            modelSelect.innerHTML = ""; 
             let direktori = getDirektoriLengkap();
+            
             if(direktori[brand] && direktori[brand].length > 0) {
                 modelSelect.disabled = false;
-                direktori[brand].forEach(model => { let option = document.createElement("option"); option.value = model.id; option.text = model.nama; modelSelect.add(option); });
+                direktori[brand].forEach(model => { 
+                    let option = document.createElement("option"); 
+                    option.value = model.id; option.text = model.nama; 
+                    modelSelect.add(option); 
+                });
             } else {
-                let option = document.createElement("option"); option.text = "---"; modelSelect.add(option); modelSelect.disabled = true;
+                let option = document.createElement("option"); 
+                option.text = "---"; modelSelect.add(option); 
+                modelSelect.disabled = true;
             }
-            togglePanelVisibility(brand); resetRemoteUI();
+            
+            // --- REKAM PILIHAN MODEL BAWAAN KE MEMORI ---
+            if(modelSelect.value) {
+                localStorage.setItem("itsig_model", modelSelect.value); 
+            }
+            
+            togglePanelVisibility(brand); 
+            resetRemoteUI();
         }
 
         function togglePanelVisibility(brand) {
@@ -596,8 +639,14 @@
         function hapusDatabaseKustom() { if(confirm("AWAS: Format sistem akan menghapus SELURUH profil kustom dan memori alat di atap. Lanjutkan?")) { clearDB(); } }
 
         function resetRemoteUI() { 
+            let modelSelect = document.getElementById("acModel");
+            
+            // --- REKAM PERUBAHAN MODEL KE MEMORI ---
+            if(modelSelect && modelSelect.value) {
+                localStorage.setItem("itsig_model", modelSelect.value); 
+            }
+            
             let savedSuhu = localStorage.getItem("itsig_suhu");
-            // Jika ada memori, pakai itu. Jika tidak ada, pakai 24.
             targetSuhu = savedSuhu ? parseInt(savedSuhu) : 24; 
             document.getElementById("remoteTempDisplay").innerText = targetSuhu; 
         }
