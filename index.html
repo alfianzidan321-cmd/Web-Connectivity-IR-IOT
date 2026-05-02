@@ -598,15 +598,50 @@
         }
 
         function togglePanelVisibility(brand) {
-            const pRemote = document.getElementById("panelRemote"); const pAdd = document.getElementById("panelAddCustom");
-            const badgeCustom = document.getElementById("customActiveBadge"); const boxLearn = document.getElementById("customLearnBox");
-            pRemote.classList.add('hidden'); pAdd.classList.add('hidden'); pAdd.classList.remove('flex');
+            const pRemote = document.getElementById("panelRemote"); 
+            const pAdd = document.getElementById("panelAddCustom");
+            const badgeCustom = document.getElementById("customActiveBadge"); 
+            const boxLearn = document.getElementById("customLearnBox");
+            const btnTemps = document.querySelectorAll("button[onclick^='ubahSuhu']"); // Penembak jitu untuk tombol suhu
 
-            if (brand === "+ TAMBAH KUSTOM BARU") { pAdd.classList.remove('hidden'); pAdd.classList.add('flex'); } 
+            // Reset tampilan panel dasar
+            pRemote.classList.add('hidden'); 
+            pAdd.classList.add('hidden'); 
+            pAdd.classList.remove('flex');
+
+            if (brand === "+ TAMBAH KUSTOM BARU") { 
+                pAdd.classList.remove('hidden'); 
+                pAdd.classList.add('flex'); 
+            } 
             else {
                 pRemote.classList.remove('hidden');
-                if (brand === "KUSTOM TERSIMPAN") { badgeCustom.classList.remove('hidden'); badgeCustom.classList.add('flex'); boxLearn.classList.remove('hidden'); } 
-                else { badgeCustom.classList.add('hidden'); badgeCustom.classList.remove('flex'); boxLearn.classList.add('hidden'); }
+                
+                if (brand === "KUSTOM TERSIMPAN") { 
+                    // Tampilkan UI khusus Kustom
+                    badgeCustom.classList.remove('hidden'); 
+                    badgeCustom.classList.add('flex'); 
+                    boxLearn.classList.remove('hidden'); 
+                    
+                    // MATIKAN TOMBOL SUHU (Visual & Fungsi)
+                    btnTemps.forEach(btn => {
+                        btn.classList.add('opacity-20', 'cursor-not-allowed');
+                        btn.disabled = true;
+                    });
+                    document.getElementById("remoteTempDisplay").innerText = "--"; 
+                } 
+                else { 
+                    // Sembunyikan UI khusus Kustom
+                    badgeCustom.classList.add('hidden'); 
+                    badgeCustom.classList.remove('flex'); 
+                    boxLearn.classList.add('hidden'); 
+                    
+                    // NYALAKAN KEMBALI TOMBOL SUHU
+                    btnTemps.forEach(btn => {
+                        btn.classList.remove('opacity-20', 'cursor-not-allowed');
+                        btn.disabled = false;
+                    });
+                    resetRemoteUI(); // Kembalikan ke suhu terakhir dari memori
+                }
             }
         }
 
@@ -681,16 +716,26 @@
 
         function ubahSuhu(delta) {
             playHapticBeep();
+            
+            // --- PROTEKSI MODE KUSTOM ---
+            let brandId = document.getElementById("acBrand").value;
+            if (brandId === "KUSTOM TERSIMPAN") {
+                showToast("Suhu tidak tersedia di Mode Kustom", "error");
+                return; // Berhenti di sini, jangan kirim perintah ke ESP32
+            }
+            // ----------------------------
+
             if (!isPowerOn) return; 
             let suhuBaru = targetSuhu + delta;
             if (suhuBaru >= 16 && suhuBaru <= 30) {
-                targetSuhu = suhuBaru; document.getElementById("remoteTempDisplay").innerText = targetSuhu;
-                localStorage.setItem("itsig_suhu", targetSuhu);
+                targetSuhu = suhuBaru; 
+                document.getElementById("remoteTempDisplay").innerText = targetSuhu;
                 triggerPopAnimation('remoteTempDisplay');
-                let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
-                let commandStr = (brandId === "KUSTOM TERSIMPAN") ? ("AC_SET_" + modelId + "_TEMP_" + targetSuhu) : ("AC_SET_" + modelId + "_TEMP_" + targetSuhu);
+                
+                let modelId = document.getElementById("acModel").value;
+                let commandStr = "AC_SET_" + modelId + "_TEMP_" + targetSuhu;
                 kirimPerintah(commandStr, "Suhu " + targetSuhu + "°C");
-                addLog(`Ubah Suhu ke ${targetSuhu}°C`); // Tambahkan Log
+                addLog(`Ubah Suhu ke ${targetSuhu}°C`);
             }
         }
 
