@@ -221,7 +221,7 @@
                             <span class="text-xl text-lcdText/70 ml-1 mt-1">°C</span>
                         </div>
                         <!-- Overlay saat AC Mati -->
-                        <div id="remoteOffOverlay" class="absolute inset-0 bg-lcdBg flex items-center justify-center hidden">
+                        <div id="remoteOffOverlay" class="absolute inset-0 bg-lcdBg flex items-center justify-center">
                             <span class="text-zinc-700 text-sm tracking-widest font-mono font-medium">PERANGKAT MATI</span>
                         </div>
                     </div>
@@ -232,8 +232,8 @@
                             <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                         </button>
                         
-                        <button onclick="togglePower()" id="btnPower" class="ac-control btn-press w-16 h-16 bg-white hover:bg-zinc-200 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center transition disabled:shadow-none disabled:bg-zinc-600">
-                            <svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                        <button onclick="togglePower()" id="btnPower" class="ac-control btn-press w-16 h-16 bg-danger border-transparent hover:bg-red-500 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center transition disabled:shadow-none disabled:bg-zinc-600">
+                            <svg class="w-6 h-6 stroke-white stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
                         </button>
 
                         <button onclick="ubahSuhu(1)" class="ac-control btn-press w-12 h-12 bg-surfaceAlt hover:bg-borderCol border border-borderCol/50 rounded-full flex items-center justify-center text-white transition disabled:opacity-50">
@@ -516,10 +516,15 @@
 
         function getDirektoriLengkap() {
             return {
-                "KUSTOM TERSIMPAN": customProfiles, "+ TAMBAH KUSTOM BARU": [], 
-                "MIDEA / COOLIX": [ { id: "COOLIX", nama: "Coolix Standar" }, { id: "MIDEA", nama: "Midea Baru" } ],
-                "SAMSUNG": [ { id: "SAMSUNG", nama: "Samsung Standar" }, { id: "SAMSUNG_AC", nama: "Samsung Inverter" } ],
-                "LG": [ { id: "LG", nama: "LG Standar" } ], "DAIKIN": [ { id: "DAIKIN", nama: "Daikin Umum" } ], "PANASONIC": [ { id: "PANASONIC", nama: "Panasonic Umum" } ]
+                "SHARP": [ { id: "SHARP", nama: "Sharp Plasma" } ],
+                "PANASONIC": [ { id: "PANASONIC", nama: "Panasonic Umum" } ],
+                "DAIKIN": [ { id: "DAIKIN", nama: "Daikin Umum" } ], 
+                "SAMSUNG": [ { id: "SAMSUNG", nama: "Samsung Standar" } ],
+                "LG": [ { id: "LG", nama: "LG Standar" } ], 
+                "GREE": [ { id: "GREE", nama: "Gree Umum" } ],
+                "MIDEA / COOLIX": [ { id: "MIDEA", nama: "Midea / Coolix" } ],
+                "AQUA / HAIER": [ { id: "AQUA", nama: "Aqua Japan" } ],
+                "TCL / POLYTRON": [ { id: "TCL", nama: "TCL / Polytron OEM" } ]
             };
         }
 
@@ -528,37 +533,115 @@
 
         async function initDirectory() {
             await loadProfilesFromDB();
-            let brandSelect = document.getElementById("acBrand"); let prevBrand = brandSelect.value; brandSelect.innerHTML = ""; 
+            let brandSelect = document.getElementById("acBrand"); 
+            brandSelect.innerHTML = ""; 
             let direktori = getDirektoriLengkap();
-            for (let brand in direktori) { let option = document.createElement("option"); option.value = brand; option.text = brand; brandSelect.add(option); }
-            if(prevBrand && (direktori[prevBrand].length > 0 || prevBrand === "+ TAMBAH KUSTOM BARU")) { brandSelect.value = prevBrand; } 
-            else if (customProfiles.length > 0) { brandSelect.value = "KUSTOM TERSIMPAN"; } 
-            else { brandSelect.value = "SAMSUNG"; }
+            
+            // Susun opsi merek
+            for (let brand in direktori) { 
+                let option = document.createElement("option"); 
+                option.value = brand; option.text = brand; 
+                brandSelect.add(option); 
+            }
+            
+            // --- BACA INGATAN MEREK DARI MEMORI ---
+            let savedBrand = localStorage.getItem("itsig_brand");
+            if (savedBrand && (direktori[savedBrand] || savedBrand === "KUSTOM TERSIMPAN")) { 
+                brandSelect.value = savedBrand; 
+            } else if (customProfiles.length > 0) { 
+                brandSelect.value = "KUSTOM TERSIMPAN"; 
+            } else { 
+                brandSelect.value = "SAMSUNG"; 
+            }
+            
             updateModelList(); 
+            
+            // --- BACA INGATAN MODEL DARI MEMORI ---
+            let savedModel = localStorage.getItem("itsig_model");
+            let modelSelect = document.getElementById("acModel");
+            // Pastikan model yang tersimpan memang ada di dalam list merek yang dipilih
+            if (savedModel && Array.from(modelSelect.options).some(opt => opt.value === savedModel)) {
+                modelSelect.value = savedModel;
+            }
         }
 
         function updateModelList() {
-            let brand = document.getElementById("acBrand").value; let modelSelect = document.getElementById("acModel"); modelSelect.innerHTML = ""; 
+            let brand = document.getElementById("acBrand").value; 
+            
+            // --- REKAM PILIHAN MEREK KE MEMORI ---
+            localStorage.setItem("itsig_brand", brand); 
+            
+            let modelSelect = document.getElementById("acModel"); 
+            modelSelect.innerHTML = ""; 
             let direktori = getDirektoriLengkap();
+            
             if(direktori[brand] && direktori[brand].length > 0) {
                 modelSelect.disabled = false;
-                direktori[brand].forEach(model => { let option = document.createElement("option"); option.value = model.id; option.text = model.nama; modelSelect.add(option); });
+                direktori[brand].forEach(model => { 
+                    let option = document.createElement("option"); 
+                    option.value = model.id; option.text = model.nama; 
+                    modelSelect.add(option); 
+                });
             } else {
-                let option = document.createElement("option"); option.text = "---"; modelSelect.add(option); modelSelect.disabled = true;
+                let option = document.createElement("option"); 
+                option.text = "---"; modelSelect.add(option); 
+                modelSelect.disabled = true;
             }
-            togglePanelVisibility(brand); resetRemoteUI();
+            
+            // --- REKAM PILIHAN MODEL BAWAAN KE MEMORI ---
+            if(modelSelect.value) {
+                localStorage.setItem("itsig_model", modelSelect.value); 
+            }
+            
+            togglePanelVisibility(brand); 
+            resetRemoteUI();
         }
 
         function togglePanelVisibility(brand) {
-            const pRemote = document.getElementById("panelRemote"); const pAdd = document.getElementById("panelAddCustom");
-            const badgeCustom = document.getElementById("customActiveBadge"); const boxLearn = document.getElementById("customLearnBox");
-            pRemote.classList.add('hidden'); pAdd.classList.add('hidden'); pAdd.classList.remove('flex');
+            const pRemote = document.getElementById("panelRemote"); 
+            const pAdd = document.getElementById("panelAddCustom");
+            const badgeCustom = document.getElementById("customActiveBadge"); 
+            const boxLearn = document.getElementById("customLearnBox");
+            const btnTemps = document.querySelectorAll("button[onclick^='ubahSuhu']"); // Penembak jitu untuk tombol suhu
 
-            if (brand === "+ TAMBAH KUSTOM BARU") { pAdd.classList.remove('hidden'); pAdd.classList.add('flex'); } 
+            // Reset tampilan panel dasar
+            pRemote.classList.add('hidden'); 
+            pAdd.classList.add('hidden'); 
+            pAdd.classList.remove('flex');
+
+            if (brand === "+ TAMBAH KUSTOM BARU") { 
+                pAdd.classList.remove('hidden'); 
+                pAdd.classList.add('flex'); 
+            } 
             else {
                 pRemote.classList.remove('hidden');
-                if (brand === "KUSTOM TERSIMPAN") { badgeCustom.classList.remove('hidden'); badgeCustom.classList.add('flex'); boxLearn.classList.remove('hidden'); } 
-                else { badgeCustom.classList.add('hidden'); badgeCustom.classList.remove('flex'); boxLearn.classList.add('hidden'); }
+                
+                if (brand === "KUSTOM TERSIMPAN") { 
+                    // Tampilkan UI khusus Kustom
+                    badgeCustom.classList.remove('hidden'); 
+                    badgeCustom.classList.add('flex'); 
+                    boxLearn.classList.remove('hidden'); 
+                    
+                    // MATIKAN TOMBOL SUHU (Visual & Fungsi)
+                    btnTemps.forEach(btn => {
+                        btn.classList.add('opacity-20', 'cursor-not-allowed');
+                        btn.disabled = true;
+                    });
+                    document.getElementById("remoteTempDisplay").innerText = "--"; 
+                } 
+                else { 
+                    // Sembunyikan UI khusus Kustom
+                    badgeCustom.classList.add('hidden'); 
+                    badgeCustom.classList.remove('flex'); 
+                    boxLearn.classList.add('hidden'); 
+                    
+                    // NYALAKAN KEMBALI TOMBOL SUHU
+                    btnTemps.forEach(btn => {
+                        btn.classList.remove('opacity-20', 'cursor-not-allowed');
+                        btn.disabled = false;
+                    });
+                    resetRemoteUI(); // Kembalikan ke suhu terakhir dari memori
+                }
             }
         }
 
@@ -617,11 +700,23 @@
 
         function hapusDatabaseKustom() { if(confirm("AWAS: Format sistem akan menghapus SELURUH profil kustom dan memori alat di atap. Lanjutkan?")) { clearDB(); } }
 
-        function resetRemoteUI() { targetSuhu = 24; document.getElementById("remoteTempDisplay").innerText = targetSuhu; }
+        function resetRemoteUI() { 
+            let modelSelect = document.getElementById("acModel");
+            
+            // --- REKAM PERUBAHAN MODEL KE MEMORI ---
+            if(modelSelect && modelSelect.value) {
+                localStorage.setItem("itsig_model", modelSelect.value); 
+            }
+            
+            let savedSuhu = localStorage.getItem("itsig_suhu");
+            targetSuhu = savedSuhu ? parseInt(savedSuhu) : 24; 
+            document.getElementById("remoteTempDisplay").innerText = targetSuhu; 
+        }
 
         function togglePower() {
             playHapticBeep();
             isPowerOn = !isPowerOn;
+            localStorage.setItem("itsig_power", isPowerOn);
             let btnPower = document.getElementById("btnPower"); let overlay = document.getElementById("remoteOffOverlay");
             let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
             let commandSuffix = (brandId === "KUSTOM TERSIMPAN") ? "CUSTOM_ON" : modelId;
@@ -648,15 +743,26 @@
 
         function ubahSuhu(delta) {
             playHapticBeep();
+            
+            // --- PROTEKSI MODE KUSTOM ---
+            let brandId = document.getElementById("acBrand").value;
+            if (brandId === "KUSTOM TERSIMPAN") {
+                showToast("Suhu tidak tersedia di Mode Kustom", "error");
+                return; // Berhenti di sini, jangan kirim perintah ke ESP32
+            }
+            // ----------------------------
+
             if (!isPowerOn) return; 
             let suhuBaru = targetSuhu + delta;
             if (suhuBaru >= 16 && suhuBaru <= 30) {
-                targetSuhu = suhuBaru; document.getElementById("remoteTempDisplay").innerText = targetSuhu;
+                targetSuhu = suhuBaru; 
+                document.getElementById("remoteTempDisplay").innerText = targetSuhu;
                 triggerPopAnimation('remoteTempDisplay');
-                let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
-                let commandStr = (brandId === "KUSTOM TERSIMPAN") ? ("AC_SET_" + modelId + "_TEMP_" + targetSuhu) : ("AC_SET_" + modelId + "_TEMP_" + targetSuhu);
+                
+                let modelId = document.getElementById("acModel").value;
+                let commandStr = "AC_SET_" + modelId + "_TEMP_" + targetSuhu;
                 kirimPerintah(commandStr, "Suhu " + targetSuhu + "°C");
-                addLog(`Ubah Suhu ke ${targetSuhu}°C`); // Tambahkan Log
+                addLog(`Ubah Suhu ke ${targetSuhu}°C`);
             }
         }
 
@@ -729,8 +835,6 @@
             document.getElementById("controlPanels").classList.remove("hidden");
             document.getElementById("panelActivityLog").classList.remove("hidden");
             
-            isPowerOn = true;
-            document.getElementById("remoteOffOverlay").classList.add("hidden");
             setUIState(true); 
             addLog("Sistem Demo Dimulai");
 
@@ -764,8 +868,6 @@
             document.getElementById("controlPanels").classList.remove("hidden");
             document.getElementById("panelActivityLog").classList.remove("hidden");
             
-            isPowerOn = true;
-            document.getElementById("remoteOffOverlay").classList.add("hidden");
             setUIState(true); 
             addLog("Terhubung ke MQTT");
         }
@@ -891,6 +993,19 @@
             try {
                 await initDatabase();
                 await initDirectory(); 
+                
+                // --- BLOK PEMULIHAN INGATAN POWER ---
+                let savedPower = localStorage.getItem("itsig_power");
+                if (savedPower === "true") {
+                    isPowerOn = true;
+                    let btnPower = document.getElementById("btnPower"); 
+                    let overlay = document.getElementById("remoteOffOverlay");
+                    btnPower.classList.add("bg-white"); btnPower.classList.remove("bg-danger", "border-transparent");
+                    btnPower.innerHTML = '<svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+                    overlay.classList.add("hidden");
+                }
+                // ------------------------------------
+
                 connectMQTT();   
             } catch (err) {
                 console.error("Gagal memulai sistem: ", err);
