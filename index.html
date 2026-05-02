@@ -550,15 +550,38 @@
         async function initDirectory() {
             await loadProfilesFromDB();
             let brandSelect = document.getElementById("acBrand"); 
+            
+            // 1. Eksekusi mati semua HTML bawaan
             brandSelect.innerHTML = ""; 
+            
             let direktori = getDirektoriLengkap();
             
-            // Susun opsi merek
+            // 2. Susun opsi merek populer dari database direktori
             for (let brand in direktori) { 
                 let option = document.createElement("option"); 
                 option.value = brand; option.text = brand; 
                 brandSelect.add(option); 
             }
+            
+            // ================= INJEKSI MODE KUSTOM =================
+            // 3. Tambahkan pembatas visual
+            let separator = document.createElement("option");
+            separator.disabled = true;
+            separator.text = "────────────────";
+            brandSelect.add(separator);
+
+            // 4. Tambahkan menu Kustom
+            let optKustom = document.createElement("option");
+            optKustom.value = "KUSTOM TERSIMPAN";
+            optKustom.text = "KUSTOM TERSIMPAN";
+            brandSelect.add(optKustom);
+
+            // 5. Tambahkan menu Tambah Baru
+            let optTambah = document.createElement("option");
+            optTambah.value = "+ TAMBAH KUSTOM BARU";
+            optTambah.text = "+ TAMBAH KUSTOM BARU";
+            brandSelect.add(optTambah);
+            // =======================================================
             
             // --- BACA INGATAN MEREK DARI MEMORI ---
             let savedBrand = localStorage.getItem("itsig_brand");
@@ -580,7 +603,7 @@
                 modelSelect.value = savedModel;
             }
         }
-
+        
         function updateModelList() {
             let brand = document.getElementById("acBrand").value; 
             
