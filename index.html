@@ -802,32 +802,41 @@
         }
 
         function togglePower() {
-            playHapticBeep();
-            isPowerOn = !isPowerOn;
-            localStorage.setItem("itsig_power", isPowerOn);
-            let btnPower = document.getElementById("btnPower"); let overlay = document.getElementById("remoteOffOverlay");
-            let modelId = document.getElementById("acModel").value; let brandId = document.getElementById("acBrand").value;
-            let commandSuffix = (brandId === "KUSTOM TERSIMPAN") ? "CUSTOM_ON" : modelId;
+    playHapticBeep();
+    isPowerOn = !isPowerOn;
+    localStorage.setItem("itsig_power", isPowerOn);
+    let btnPower = document.getElementById("btnPower"); let overlay = document.getElementById("remoteOffOverlay");
+    let modelId = document.getElementById("acModel").value; 
+    let brandId = document.getElementById("acBrand").value;
+    let namaAc = document.getElementById("acModel").options[document.getElementById("acModel").selectedIndex]?.text || "AC";
 
-            if (isPowerOn) {
-                btnPower.classList.add("bg-white"); btnPower.classList.remove("bg-danger", "border-transparent");
-                btnPower.innerHTML = '<svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
-                overlay.classList.add("hidden");
-                triggerPopAnimation('remoteTempDisplay');
-                
-                let namaAc = document.getElementById("acModel").options[document.getElementById("acModel").selectedIndex]?.text || "AC";
-                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_ON" : ("AC_ON_" + commandSuffix), "Menyalakan AC");
-                addLog(`Menyalakan ${namaAc}`); // Tambahkan Log
-            } else {
-                btnPower.classList.remove("bg-white"); btnPower.classList.add("bg-danger", "border-transparent");
-                btnPower.innerHTML = '<svg class="w-6 h-6 stroke-white stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
-                overlay.classList.remove("hidden");
-                
-                let namaAc = document.getElementById("acModel").options[document.getElementById("acModel").selectedIndex]?.text || "AC";
-                kirimPerintah((brandId === "KUSTOM TERSIMPAN") ? "AC_OFF" : ("AC_OFF_" + commandSuffix), "Mematikan AC");
-                addLog(`Mematikan ${namaAc}`); // Tambahkan Log
-            }
+    if (isPowerOn) {
+        btnPower.classList.add("bg-white"); btnPower.classList.remove("bg-danger", "border-transparent");
+        btnPower.innerHTML = '<svg class="w-6 h-6 stroke-bgBase stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+        overlay.classList.add("hidden");
+        triggerPopAnimation('remoteTempDisplay');
+        
+        // --- LOGIKA PENEMBAKAN MUTLAK: NYALA ---
+        if (brandId === "KUSTOM TERSIMPAN") {
+            kirimPerintah("CUSTOM_ON", "Menyalakan " + namaAc);
+        } else {
+            kirimPerintah("AC_ON_" + modelId, "Menyalakan AC");
         }
+        addLog(`Menyalakan ${namaAc}`); 
+    } else {
+        btnPower.classList.remove("bg-white"); btnPower.classList.add("bg-danger", "border-transparent");
+        btnPower.innerHTML = '<svg class="w-6 h-6 stroke-white stroke-2" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+        overlay.classList.remove("hidden");
+        
+        // --- LOGIKA PENEMBAKAN MUTLAK: MATI ---
+        if (brandId === "KUSTOM TERSIMPAN") {
+            kirimPerintah("CUSTOM_OFF", "Mematikan " + namaAc);
+        } else {
+            kirimPerintah("AC_OFF_" + modelId, "Mematikan AC");
+        }
+        addLog(`Mematikan ${namaAc}`); 
+    }
+}
 
         function ubahSuhu(delta) {
             playHapticBeep();
@@ -1035,20 +1044,6 @@
         }
 
         function kirimPerintah(perintah, pesanToast) {
-    // ================= CEGATAN KUSTOM (VERSI BRUTAL) =================
-    // Cek apakah perintah mengandung kata "KUSTOM TERSIMPAN"
-    if (perintah.includes("KUSTOM TERSIMPAN")) {
-        if (perintah.includes("ON")) {
-            perintah = "CUSTOM_ON";
-            pesanToast = "Menyalakan AC Kustom";
-        } 
-        else if (perintah.includes("OFF")) {
-            perintah = "CUSTOM_OFF";
-            pesanToast = "Mematikan AC Kustom";
-        }
-    }
-    // =================================================================
-
     if (isDemoMode) {
         showToast(pesanToast + " (Simulasi)", "success");
         return;
