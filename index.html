@@ -690,52 +690,49 @@
 }
 
         function togglePanelVisibility(brand) {
-            const pRemote = document.getElementById("panelRemote"); 
-            const pAdd = document.getElementById("panelAddCustom");
-            const badgeCustom = document.getElementById("customActiveBadge"); 
-            const boxLearn = document.getElementById("customLearnBox");
-            const btnTemps = document.querySelectorAll("button[onclick^='ubahSuhu']"); // Penembak jitu untuk tombol suhu
+    const pRemote = document.getElementById("panelRemote"); 
+    const pAdd = document.getElementById("panelAddCustom");
+    const badgeCustom = document.getElementById("customActiveBadge"); 
+    const btnTemps = document.querySelectorAll("button[onclick^='ubahSuhu']"); 
 
-            // Reset tampilan panel dasar
-            pRemote.classList.add('hidden'); 
-            pAdd.classList.add('hidden'); 
-            pAdd.classList.remove('flex');
+    // Reset tampilan panel dasar
+    pRemote.classList.add('hidden'); 
+    pAdd.classList.add('hidden'); 
+    pAdd.classList.remove('flex');
 
-            if (brand === "+ TAMBAH KUSTOM BARU") { 
-                pAdd.classList.remove('hidden'); 
-                pAdd.classList.add('flex'); 
-            } 
-            else {
-                pRemote.classList.remove('hidden');
-                
-                if (brand === "KUSTOM TERSIMPAN") { 
-                    // Tampilkan UI khusus Kustom
-                    badgeCustom.classList.remove('hidden'); 
-                    badgeCustom.classList.add('flex'); 
-                    boxLearn.classList.remove('hidden'); 
-                    
-                    // MATIKAN TOMBOL SUHU (Visual & Fungsi)
-                    btnTemps.forEach(btn => {
-                        btn.classList.add('opacity-20', 'cursor-not-allowed');
-                        btn.disabled = true;
-                    });
-                    document.getElementById("remoteTempDisplay").innerText = "--"; 
-                } 
-                else { 
-                    // Sembunyikan UI khusus Kustom
-                    badgeCustom.classList.add('hidden'); 
-                    badgeCustom.classList.remove('flex'); 
-                    boxLearn.classList.add('hidden'); 
-                    
-                    // NYALAKAN KEMBALI TOMBOL SUHU
-                    btnTemps.forEach(btn => {
-                        btn.classList.remove('opacity-20', 'cursor-not-allowed');
-                        btn.disabled = false;
-                    });
-                    resetRemoteUI(); // Kembalikan ke suhu terakhir dari memori
-                }
-            }
+    if (brand === "+ TAMBAH KUSTOM BARU") { 
+        pAdd.classList.remove('hidden'); 
+        pAdd.classList.add('flex'); 
+    } 
+    else {
+        pRemote.classList.remove('hidden');
+        
+        if (brand === "KUSTOM TERSIMPAN") { 
+            badgeCustom.classList.remove('hidden'); 
+            badgeCustom.classList.add('flex'); 
+            // Hantu 'boxLearn' sudah dimusnahkan dari sini
+            
+            // MATIKAN TOMBOL SUHU (Visual & Fungsi)
+            btnTemps.forEach(btn => {
+                btn.classList.add('opacity-20', 'cursor-not-allowed');
+                btn.disabled = true;
+            });
+            document.getElementById("remoteTempDisplay").innerText = "--"; 
+        } 
+        else { 
+            badgeCustom.classList.add('hidden'); 
+            badgeCustom.classList.remove('flex'); 
+            // Hantu 'boxLearn' sudah dimusnahkan dari sini
+            
+            // NYALAKAN KEMBALI TOMBOL SUHU
+            btnTemps.forEach(btn => {
+                btn.classList.remove('opacity-20', 'cursor-not-allowed');
+                btn.disabled = false;
+            });
+            resetRemoteUI(); 
         }
+    }
+}
 
         async function simpanCustomBaru() {
     let inputName = document.getElementById("customNameInput").value.trim();
@@ -753,7 +750,6 @@
     document.getElementById("acModel").value = newId;
 
     // Kunci UI dan arahkan pengguna
-    togglePanelVisibility("KUSTOM TERSIMPAN"); 
     showToast("Profil tersimpan! Silakan gunakan tombol REKAM ON dan REKAM OFF di bawah.", "warning");
 }
 
