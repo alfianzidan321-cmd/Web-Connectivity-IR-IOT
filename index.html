@@ -1035,17 +1035,19 @@
         }
 
         function kirimPerintah(perintah, pesanToast) {
-    // ================= CEGATAN KUSTOM =================
-    // Polisi lalu lintas: Periksa dan ubah peluru sebelum dikirim
-    if (perintah === "AC_ON_KUSTOM TERSIMPAN") {
-        perintah = "CUSTOM_ON";
-        pesanToast = "Menyalakan AC Kustom Tersimpan";
-    } 
-    else if (perintah === "AC_OFF_KUSTOM TERSIMPAN") {
-        perintah = "CUSTOM_OFF";
-        pesanToast = "Mematikan AC Kustom Tersimpan";
+    // ================= CEGATAN KUSTOM (VERSI BRUTAL) =================
+    // Cek apakah perintah mengandung kata "KUSTOM TERSIMPAN"
+    if (perintah.includes("KUSTOM TERSIMPAN")) {
+        if (perintah.includes("ON")) {
+            perintah = "CUSTOM_ON";
+            pesanToast = "Menyalakan AC Kustom";
+        } 
+        else if (perintah.includes("OFF")) {
+            perintah = "CUSTOM_OFF";
+            pesanToast = "Mematikan AC Kustom";
+        }
     }
-    // ==================================================
+    // =================================================================
 
     if (isDemoMode) {
         showToast(pesanToast + " (Simulasi)", "success");
