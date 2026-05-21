@@ -1,0 +1,17 @@
+{
+    "name": "IT-SIG Smart Control",
+    "short_name": "SmartAC",
+    "description": "Dashboard Kontrol AC Pintar",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#09090b",
+    "theme_color": "#0284c7",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/3673/3673946.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
